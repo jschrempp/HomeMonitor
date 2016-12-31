@@ -68,7 +68,15 @@ const int VIRTUAL_DEVICE_NUM = 0;   	// use the first virtual device - change if
 const unsigned long MULTI_TIME = 2ul;   	// 2 second interval to detect multiple persons
 const unsigned long AWAY = 600ul;       	// 10 * 60 = 600; ten minutes for declaring away
 const unsigned long COMATOSE = 3600ul;  	// 60*60 = 3600; 1 hour for for declaring no movement
-const String messages[] = {             	// additional log messages for this application
+//XXX new
+typedef enum  enum_messageIndex_type  {                    // used to select the correct message from the string array messages[]
+    emsgNoOneIsHome = 0,
+    emsgPersonIsHome,
+    emsgNoMovement,
+    emsgMultiplePersons
+}  ;
+//XXX end new
+const String messages[] = {             	// additional log messages for this application. Use enum_messageIndex to access these.
                         	"No one is home",
                         	"Person is home",
                         	"No movement",
@@ -139,7 +147,7 @@ String cBuf[BUF_LEN];   // circular buffer to store events and messages as they 
                         //    TYPE is A (advisory) or S (sensor)
                         //    SEQUENCENUMBER is a monotonically increasing global (eventNumber)
                         //    INDEX is into sensorName[] for type sensor
-                        //          or into messages[] for type advisory
+                        //          or enum_messageIndex for type advisory
                         //    EPOCTIME is when the entry happened
                         // see cBufInsert(), cBufRead(), readFromBuffer(), logSensor(), logMessage()
 
@@ -405,14 +413,14 @@ void loop()
 	personHome = NOT_HOME;
 
 	// log "person not home" message
-	logMessage(0);
+	logMessage(emsgNoOneIsHome);
 
   }
 
   // Testing for "no movement"
   if(!lastSensorIsDoor && !comatose && (personHome == HOME) && ((Time.now() - lastPIRTime) > COMATOSE))
   {
-  	logMessage(2);
+  	logMessage(emsgNoMovement);
   	comatose = true;
   }
 
@@ -445,6 +453,8 @@ void toggleD7LED(void)
 // Arguments:
 //  messageIndex:  index into the messages[] array of message strings
 //
+//XXX I hate to declare this an int when it is actually  enum_messageIndex_type
+//    but I can't find a way to get that to compile.
 void logMessage(int messageIndex)
 {
 	// create timestamp substring
@@ -564,7 +574,7 @@ void processPIRSensor(int sensorIndex)
         	supress = true;    	// Set the suppress flag
 
         	// log the suppress message
-        	logMessage(3);
+        	logMessage(emsgMultiplePersons);
     	}
 
     	//Test for Person is home
@@ -574,7 +584,7 @@ void processPIRSensor(int sensorIndex)
         	personHome = HOME;    	// Set the personHome state
 
         	// log the person is home message
-        	logMessage(1);
+        	logMessage(emsgPersonIsHome);
     	}
 
     	lastPIR = sensorIndex;  // update what is the last PIR to trip
