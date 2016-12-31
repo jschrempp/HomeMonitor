@@ -15,6 +15,9 @@
 #ifdef PLATFORM_ID
     #include "i2c_hal.h"
 #endif
+
+#include <testinclude.ino>
+
 /***************************************************************************************************/
 // saratogaSIS: SIS firmware - this is the software that is upoaded to the SIS Hub and performs
 // sensor protocol decoding, sensor trip code processing, logging and cloud communication.  Compile
@@ -49,10 +52,6 @@ const unsigned long ONE_DAY_IN_MILLIS = 86400000L;	// 24*60*60*1000
 const int MAX_WIRELESS_SENSORS = 20;
 const unsigned long FILTER_TIME = 5000L;  // Once a sensor trip has been detected, it requires 5 seconds before a new detection is valid
 const int BUF_LEN = 100;     	// circular buffer size.
-const int MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
-                            	//  MAX_WIRELESS_SENSORS are non-PIR sensors
-const int MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
-const int ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
 const int MAX_SUBSTRINGS = 6;   // the largest number of comma delimited substrings in a command string
 const byte NUM_BLINKS = 2;  	// number of times to blink the D7 LED when a sensor trip is received
 const unsigned long BLINK_TIME = 300L; // number of milliseconds to turn D7 LED on and off for a blink
@@ -82,63 +81,38 @@ const byte NOT_HOME = 2;	// person is not home
 /************************************* Global Variables ****************************************************/
 volatile boolean codeAvailable = false;  // set to true when a valid code is received and confirmed
 volatile unsigned long receivedSensorCode; // decoded 24 bit value for a received and confirmed code from a wireless sensor
-volatile unsigned int codeTimes315[52];  // array to hold times (microseconds) between interrupts from transitions in the received data
+const int MAX_CODE_TIMES = 52;
+volatile unsigned int codeTimes315[MAX_CODE_TIMES];  // array to hold times (microseconds) between interrupts from transitions in the received data
                          	//  times[0] holds the value of the sync interval (LOW).  HIGH and LOW times for codes are
                          	//  stored in times[1] - times[49] (HIGH and LOW pairs for 24 bits).  A few extra elements
                          	//  are provided for overflow.
-volatile unsigned int codeTimes433[52];  // array to hold times (microseconds) between interrupts from transitions in the received data
+volatile unsigned int codeTimes433[MAX_CODE_TIMES];  // array to hold times (microseconds) between interrupts from transitions in the received data
                          	//  times[0] holds the value of the sync interval (LOW).  HIGH and LOW times for codes are
                          	//  stored in times[1] - times[49] (HIGH and LOW pairs for 24 bits).  A few extra elements
                          	//  are provided for overflow.
 volatile unsigned int *codeTimes;  // pointer to 315 MHz or 433 MHz codeTimes array based upon the interrupt.
 time_t resetTime;       	// variable to hold the time of last reset
 
-   	//	Sensor registration data is held in parallel arrays.
-String sensorName[] =      	{ "unregistered S0",
-                             	"unregistered S1",
-                             	"unregistered S2",
-                             	"unregistered S3",
-                             	"unregistered S4",
-                             	"unregistered S5",
-                             	"unregistered S6",
-                             	"unregistered S7",
-                             	"unregistered S8",
-                             	"unregistered S9",
-                             	"unregistered S10",
-                             	"unregistered S11",
-                             	"unregistered S12",
-                             	"unregistered S13",
-                             	"unregistered S14",
-                             	"unregistered S15",
-                             	"unregistered S16",
-                             	"unregistered S17",
-                             	"unregistered S18",
-                             	"unregistered S19"
-                           	};
+// NEW These structures are meant to compartmentalize the existing code. When tested, remove this comment.
+// Holds information about each sensor configured in the system
+enum enum_sensorType {
+    esensorTypeUnknown,
+    ePIR,
+    eSeparation
+};
+struct type_sensor {
+    String sensorName = "No Name Assigned";
+    unsigned long activateCode = 0;
+    unsigned long lastTripTime = 0;
+    enum_sensorType sensorType = esensorTypeUnknown;
+    bool alarmOnTrip = 0;
 
-unsigned long activateCode[] = { 0,   	// UNREGISTERED SENSOR
-                             	0,	// UNREGISTERED SENSOR
-                             	0,	// UNREGISTERED SENSOR
-                             	0,	// UNREGISTERED SENSOR
-                             	0,	// UNREGISTERED SENSOR
-                             	0,	// UNREGISTERED SENSOR
-                             	0,   	// UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0,      // UNREGISTERED SENSOR
-                             	0	// UNREGISTERED SENSOR
-                           	};
+};
+type_sensor sensor_info[MAX_WIRELESS_SENSORS];
+// END of NEW
 
-unsigned long lastTripTime[MAX_WIRELESS_SENSORS];	// array to hold the last time a sensor was tripped - for filtering purposes
+
+
 unsigned long upcount = 0L; // sequence number added to the circular buffer log entries
 
 	// other data that needs to be stored in non-volatile memory
@@ -269,12 +243,14 @@ void setup()
 
   toggleD7LED();
 
+  /*
   // Initialize the lastTripTime[] array
+  //XXX won't need to do this.
   for (int i = 0; i < MAX_WIRELESS_SENSORS; i++)
   {
   	lastTripTime[i] = 0L;
   }
-
+*/
 
 #ifdef DEBUG
   Serial.println("End of setup()");
@@ -304,7 +280,7 @@ void loop()
 	knownCode = false;
 	for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
-    	if ( (receivedSensorCode == activateCode[i])  )
+    	if ( receivedSensorCode == sensor_info[i].activateCode ) // XXX activateCode[i])  )
     	{
         	knownCode = true;
         	break;
@@ -316,13 +292,14 @@ void loop()
 	{
     	unsigned long now;
     	now = millis();
-    	if((now - lastTripTime[i]) > FILTER_TIME) // filter out multiple codes
+    	// XXX if((now - lastTripTime[i]) > FILTER_TIME) // filter out multiple codes
+    	if( (now - sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
     	{
         	// Code for the sensor trip message
         	sensorCode = "Received sensor code: ";
         	sensorCode += receivedSensorCode;
         	sensorCode += " for ";
-        	sensorCode += sensorName[i];
+        	sensorCode += sensor_info[i].sensorName; //XXX sensorName[i];
 
         	#ifdef DEBUG
             	Serial.println(sensorCode);  // USB print for debugging
@@ -330,7 +307,7 @@ void loop()
 
         	#ifdef DEBUG_EVENT
             	debug = "Event: ";
-            	debug += String(sensorName[i]);
+            	debug += sensor_info[i].sensorName; //XXX  sensorName[i]);
             	publishDebugRecord(debug);
         	#endif
 
@@ -345,13 +322,15 @@ void loop()
         	publishEvent(String(i));
 #endif
         	// determine type of sensor and process accordingly
-        	if(i <= MAX_PIR)    	// then the sensor is a PIR
+        	// XXX if(i <= MAX_PIR)    	// then the sensor is a PIR
+            if (sensor_info[i].sensorType == ePIR)
         	{
             	processPIRSensor(i);
         	}
         	else                	// not a PIR, then a door sensor
         	{
-            if (i <= MAX_DOOR)
+            // XXX if (i <= MAX_DOOR)
+            if (sensor_info[i].sensorType == eSeparation)
             {
             	processDoorSensor(i);
         	  }
@@ -361,7 +340,8 @@ void loop()
             }
           }
 
-          if (i == ALARM_SENSOR) {
+          //XXX if (i == ALARM_SENSOR) {
+          if (sensor_info[i].alarmOnTrip) {
 
             sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
 
@@ -374,14 +354,14 @@ void loop()
         	}
 
         	// update the trip time to filter for next trip
-        	lastTripTime[i] = now;
+            sensor_info[i].lastTripTime = now;
       	}
 	}
 	else // not a code from a known sensor -- report without filtering; no entry in circular buffer
 	{
     	sensorCode = "Received sensor code: ";
     	sensorCode += receivedSensorCode;
-    	sensorCode += " for unknown sensor";  // note that JScript client depends upon the string "unknown"
+    	sensorCode += " for unknown sensor";
     	Serial.println(sensorCode);  // USB print for debugging
     	sensorCode.toCharArray(cloudMsg, sensorCode.length() );  // publish to cloud
 
@@ -399,7 +379,7 @@ void loop()
 	}
 
 	codeAvailable = false;  // reset the code available flag if it was set
-  }
+};
 
   if(!blinkReady)  // keep the non blocking blink going
 	{
@@ -700,7 +680,7 @@ void writeConfig()
 	// write the sensor names and trip codes to non volatile memory
 	for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
-    	temp = sensorName[i];
+    	temp = sensor_info[i].sensorName;
     	// check to see if name is too long, truncate if it is
     	if(temp.length() >= (CONFIG_BUFR - 2))
     	{
@@ -715,7 +695,7 @@ void writeConfig()
 
     	// store trip codes
     	temp = "";
-    	temp += activateCode[i];
+    	temp += sensor_info[i].activateCode;
     	temp.toCharArray(buf, temp.length()+1);
     	buf[temp.length()+1] = '\0'; // terminate string with a null
     	addr=eepromOffset + (i+3+MAX_WIRELESS_SENSORS) * CONFIG_BUFR; //trip codes address
@@ -777,7 +757,7 @@ void restoreConfig()
 
         	// make sure that the buffer contains a valid string
         	buf[31] = '\0';
-        	sensorName[i] = buf;
+            sensor_info[i].sensorName = buf;
 
         	// retrieve trip codes
         	addr=eepromOffset + (i+3+MAX_WIRELESS_SENSORS) * CONFIG_BUFR; //trip codes address
@@ -786,10 +766,17 @@ void restoreConfig()
         	// make sure that the buffer contains a valid string
         	buf[31] = '\0';
         	String temp(buf);
-        	activateCode[i] = temp.toInt();
+            sensor_info[i].activateCode = temp.toInt();
     	}
 
-	}
+	} else {
+        // Invalid saved config, initialze the config
+        utcOffset = "0";
+        observeDST = "N";
+        for (int i = 0; i < MAX_WIRELESS_SENSORS; i++) {
+            sensor_info[i].sensorName = "Unknown" + String(i);
+        }
+    }
 
 	return;
 
@@ -1039,9 +1026,9 @@ int registrar(String action)
         	registrationInformation = "loc: ";
         	registrationInformation += String(location);
         	registrationInformation += ", sensor code: ";
-        	registrationInformation += (String)activateCode[location];
+        	registrationInformation += sensor_info[location].activateCode;
         	registrationInformation += " is for ";
-        	registrationInformation += sensorName[location];
+        	registrationInformation += sensor_info[location].sensorName;
         	Serial.println(registrationInformation);
 
         	// write to the cloud
@@ -1057,8 +1044,8 @@ int registrar(String action)
         	}
 
         	// delete action
-        	sensorName[location] = "UNREGISTERED SENSOR";
-        	activateCode[location] = 0L;
+            sensor_info[location].sensorName = "UNREGISTERED SENSOR";
+            sensor_info[location].activateCode = 0L;
         	break;
 
     	case REG:
@@ -1076,9 +1063,10 @@ int registrar(String action)
         	}
 
         	// perform the new sensor registration function
-        	sensorName[location] = g_dest[3];
-        	activateCode[location] = g_dest[2].toInt();
-        	break;
+            sensor_info[location].sensorName = g_dest[3];
+            sensor_info[location].activateCode = g_dest[2].toInt();
+            // XXX sensor_info[location].alarmOnTrip = ;    NEED TO ADD PARAMETER FOR THIS
+            break;
 
     	case OFFSET:
         	utcOffset = "" + g_dest[1];
@@ -1191,7 +1179,7 @@ int readFromBuffer(int offset, char stringPtr[])
 
         	// format the sensor Name from the index
         	index = g_dest[2].toInt();
-            g_bufferReadout += sensorName[index];
+            g_bufferReadout += sensor_info[index].sensorName;
             g_bufferReadout += " tripped at ";
     	}
     	else    	// advisory type message
@@ -1345,7 +1333,7 @@ void simulateSensor() {
 
 	if (simCurrentTime > simEvents[i].simTime){  // if we are later in simulation than time of an event, trip it
 
-  	receivedSensorCode = activateCode[simEvents[i].simPosition]; // setting global
+  	receivedSensorCode = sensor_info[simEvents[i].simPosition].activateCode;  // setting global
   	codeAvailable = true;   // setting global
   	simLastEventFired = i;  // next time we will check only after this event
   	break;              	// only trip the next event
@@ -1383,45 +1371,51 @@ void isr433()
 
 /************************************* process315() ***********************************************/
 //This is the code to process and store timing data for interrupt 3 (315 MHz)
+//This is identical to the process433 routine
 
 void process315()
 {
-  //this is right out of RC-SWITCH
-  static unsigned int duration;
-  static unsigned int changeCount;
-  static unsigned long lastTime = 0L;
-  static unsigned int repeatCount = 0;
+    //this is right out of RC-SWITCH
+    static unsigned int duration;
+    static unsigned int changeCount;
+    static unsigned long lastTime = 0L;
+    static unsigned int repeatCount = 0;
 
+    long time = micros();
+    duration = time - lastTime;
 
-  long time = micros();
-  duration = time - lastTime;
+    if (duration > 5000
+        && duration > codeTimes[0] - 200
+        && duration < codeTimes[0] + 200)
+    {
+        // we found a second sync
+        repeatCount++;
+        changeCount--;
 
-  if (duration > 5000 && duration > codeTimes[0] - 200 && duration < codeTimes[0] + 200)
-  {
-	repeatCount++;
-	changeCount--;
-	if (repeatCount == 2)  // two successive code words found
-	{
-  	decode(changeCount); // decode the protocol from the codeTimes array
-  	repeatCount = 0;
-	}
-	changeCount = 0;
-  }
-  else if (duration > 5000)
-  {
-	changeCount = 0;
-  }
+	    if (repeatCount == 2)  // two successive code words found
+	    {
+            decode(changeCount); // decode the protocol from the codeTimes array
+            repeatCount = 0;
+        }
+        changeCount = 0; // reset so we're ready to start a new sequence
+    }
+    else if (duration > 5000)
+    {
+        // If the duration is this long, then it could be a sync
+        changeCount = 0;
+    }
 
-  if (changeCount >= 52) // too many bits before sync
-  {
-	changeCount = 0;
-	repeatCount = 0;
-  }
+    if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
+    {
+        // reset, we just had a blast of noise
+        changeCount = 0;
+        repeatCount = 0;
+    }
 
-  codeTimes[changeCount++] = duration;
-  lastTime = time;
+    codeTimes[changeCount++] = duration;
+    lastTime = time;
 
-  return;
+    return;
 }
 /***********************************end of process315() ********************************************/
 
@@ -1430,42 +1424,81 @@ void process315()
 
 void process433()
 {
-  //this is right out of RC-SWITCH
-  static unsigned int duration;
-  static unsigned int changeCount;
-  static unsigned long lastTime = 0L;
-  static unsigned int repeatCount = 0;
+    //this is right out of RC-SWITCH
+    static unsigned int duration;
+    static unsigned int changeCount;
+    static unsigned long lastTime = 0L;
+    static unsigned int repeatCount = 0;
 
+    long time = micros();
+    duration = time - lastTime;
 
-  long time = micros();
-  duration = time - lastTime;
+/*
+    A pulse for a bit is between 300 and 500 microseconds. A bit always contains either
+    three high or three low pulse intervals in a row. So if we have a duration that is
+    longer than 1500, it is not part of the bit stream.
+    When we are just processing noise, then codeTimes[0] could be anything.
+    If this interrupt is:
+        - the first rise of the pulse that starts the very first sync of
+          the first code transmission, then duration
+          could be anything. It will be stored in codeTimes at the current
+          index position since we don't know it is special.
+        - the fall of the first pulse that starts a sync, then duration
+          will be one pulse. It will be stored in codeTimes at the current
+          index position.
+        - the rise at the end of the sync, then duration will be over 5000 microseconds
+          and changeCount will be set to 0. The duration of this sync low time
+          will be stored in changeCount[0]. The duration is 31 pulse times long.
+        - the fall of the first part of a bit sequence then duration will be either
+          one pulse if a 0 or 3 pulses which is the start of a 1.
+        - if this is a valid code sequence, then as soon as this code transmission
+          is over, a new sync and sequence will start. The new sequence will start
+          with a pulse high and then 31 pulses low. This will trigger us that the
+          previous sequence of interrupts was a valid code sequence. To trigger
+          us this new sync low time must be longer than 5000 (of course) and be within
+          +/- 200 microseconds of the sync low that we saw previously. If these
+          conditions are met, then we bump repeatCount because we have now seen
+          two valid sync low times within 52 changes.
+        - when this all happens successfully a second time (we get a third sync
+          low that is +/- 200 microseconds of the first one we saw) then we
+          call the decoder for it to decide if the sequence of interrupt times
+          is a valid code sequence.
 
-  if (duration > 5000 && duration > codeTimes[0] - 200 && duration < codeTimes[0] + 200)
-  {
-	repeatCount++;
-	changeCount--;
-	if (repeatCount == 2)  // two successive code words found
-	{
-  	decode(changeCount); // decode the protocol from the codeTimes array
-  	repeatCount = 0;
-	}
-	changeCount = 0;
-  }
-  else if (duration > 5000)
-  {
-	changeCount = 0;
-  }
+    Q: Why don't we calculate codeTimes[0]/31 and check that a new duration is
+       at that value +/- some tolerance? That would allow us to ignore noise.
+ */
+    if (duration > 5000
+        && duration > codeTimes[0] - 200
+        && duration < codeTimes[0] + 200)
+    {
+        // we found a second sync
+        repeatCount++;
+        changeCount--;
 
-  if (changeCount >= 52) // too many bits before sync
-  {
-	changeCount = 0;
-	repeatCount = 0;
-  }
+	    if (repeatCount == 2)  // two successive code words found
+	    {
+            decode(changeCount); // decode the protocol from the codeTimes array
+            repeatCount = 0;
+        }
+        changeCount = 0; // reset so we're ready to start a new sequence
+    }
+    else if (duration > 5000)
+    {
+        // If the duration is this long, then it could be a sync
+        changeCount = 0;
+    }
 
-  codeTimes[changeCount++] = duration;
-  lastTime = time;
+    if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
+    {
+        // reset, we just had a blast of noise
+        changeCount = 0;
+        repeatCount = 0;
+    }
 
-  return;
+    codeTimes[changeCount++] = duration;
+    lastTime = time;
+
+    return;
 }
 /***********************************end of isr433() ********************************************/
 
@@ -1479,54 +1512,69 @@ void process433()
 void decode(unsigned int changeCount)
 {
 
-  unsigned long code = 0L;
-  unsigned long delay;
-  unsigned long delayTolerance;
+    unsigned long code = 0L;
+    unsigned long pulseTime;
+    float pulseTimeThree;
+    unsigned long pulseTolerance;
 
-  delay = codeTimes[0] / 31L;
-  delayTolerance = delay * TOLERANCE * 0.01;
+    pulseTime = codeTimes[0] / 31L;
+    pulseTimeThree = pulseTime * 3;
 
-  for (int i = 1; i < changeCount ; i=i+2)
-  {
+    pulseTolerance = pulseTime * TOLERANCE * 0.01;
 
-	if (codeTimes[i] > delay-delayTolerance && codeTimes[i] < delay+delayTolerance && codeTimes[i+1] > delay*3-delayTolerance && codeTimes[i+1] < delay*3+delayTolerance)
-	{
-  	code = code << 1;
-	}
-	else
-  	if (codeTimes[i] > delay*3-delayTolerance && codeTimes[i] < delay*3+delayTolerance && codeTimes[i+1] > delay-delayTolerance && codeTimes[i+1] < delay+delayTolerance)
-  	{
-    	code+=1;
-    	code = code << 1;
-  	}
-  	else
-  	{
-    	// Failed
-    	i = changeCount;
-    	code = 0;
-  	}
-   }
-   code = code >> 1;
-   if (changeCount > 6) // ignore < 4bit values as there are no devices sending 4bit values => noise
-   {
-  	receivedSensorCode = code;
-  	if (code == 0)
-  	{
-    	codeAvailable = false;
-  	}
-  	else
-  	{
-    	codeAvailable = true;
-  	}
+    for (int i = 1; i < changeCount ; i=i+2)
+    {
 
-   }
-   else	// too short -- noise
-   {
- 	codeAvailable = false;
- 	receivedSensorCode = 0L;
-   }
+	    if (codeTimes[i] > pulseTime - pulseTolerance
+            && codeTimes[i] < pulseTime + pulseTolerance
+            && codeTimes[i+1] > pulseTimeThree - pulseTolerance
+            && codeTimes[i+1] < pulseTimeThree + pulseTolerance)
+	    {
+            // we have a 0 shift left one
+            code = code << 1;
 
-  return;
+	    }
+        else if (codeTimes[i] > pulseTimeThree - pulseTolerance
+                && codeTimes[i] < pulseTimeThree + pulseTolerance
+                && codeTimes[i+1] > pulseTime - pulseTolerance
+                && codeTimes[i+1] < pulseTime + pulseTolerance)
+  	          {
+                  // we have a 1, add one to code
+                  code = code + 1;
+                  // shift left one
+                  code = code << 1;
+  	           }
+               else
+  	            {
+                    // Failed, this sequence of interrupts did not indicate a 1 or 0
+                    // so abort the decoding process.
+                    i = changeCount;
+                    code = 0;
+                }
+    }
+    // in decoding we shift one too many, so shift right one
+    code = code >> 1;
+
+    if (changeCount > 6) // ignore < 4bit values as there are no devices sending 4bit values => noise
+    {
+        receivedSensorCode = code;
+        if (code == 0)
+        {
+            codeAvailable = false;
+        }
+        else
+        {
+            codeAvailable = true;
+        }
+
+    }
+    else	// too short -- noise
+    {
+        codeAvailable = false;
+        receivedSensorCode = 0L;
+    }
+
+    return;
 }
 
 /************************************ end of decode() ********************************************/
