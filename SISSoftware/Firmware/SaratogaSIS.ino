@@ -37,7 +37,7 @@
 // license, as well as the the SIS Terms of Use.
 //
 //  Version 1.01.  12/30/15.
-const String VERSION = "1.01";   	// current firmware version
+const String VERSION = "2.00";   	// current firmware version
 //
 //  (c) 2015 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
@@ -55,6 +55,8 @@ const int BUF_LEN = 100;     	// circular buffer size.
 const int MAX_SUBSTRINGS = 6;   // the largest number of comma delimited substrings in a command string
 const byte NUM_BLINKS = 2;  	// number of times to blink the D7 LED when a sensor trip is received
 const unsigned long BLINK_TIME = 300L; // number of milliseconds to turn D7 LED on and off for a blink
+
+// XXX should this be 30?
 const int CONFIG_BUFR = 32; 	// buffer to use to store and retrieve data from non-volatile memory
 const String id = "SIS-2015";   // the ID value for a valid config in non volatile memory
 const String DOUBLEQ = "\"";
@@ -106,7 +108,14 @@ time_t resetTime;       	// variable to hold the time of last reset
 enum enum_sensorType {
     esensorTypeUnknown,
     ePIR,
-    eSeparation
+    eSeparation,
+    eExitDoor
+};
+String sensorType_strings[] {
+    "Unknown",
+    "PIR",
+    "Separation",
+    "Exit Door"
 };
 struct type_sensor {
     String sensorName = "No Name Assigned";
@@ -136,6 +145,7 @@ String g_dest[MAX_SUBSTRINGS];
 	// Strings to publish data to the cloud
 String sensorCode = String("");
 String g_bufferReadout = String("");
+char cloudDebug[80];    // used when debugging to give the debug client a message
 char cloudMsg[80];  	// buffer to hold last sensor tripped message
 char cloudBuf[90];  	// buffer to hold message read out from circular buffer
 char registrationInfo[80]; // buffer to hold information about registered sensors
@@ -245,6 +255,7 @@ void setup()
   Spark.variable("circularBuff", cloudBuf, STRING);
   Spark.variable("registration", registrationInfo, STRING);
   Spark.function("Register", registrar);
+  Spark.variable("cloudDebug", cloudDebug, STRING);
 
   // Publish a start up event notification
   Spark.function("publistTestE", publishTestE); // for testing events
@@ -338,7 +349,7 @@ void loop()
         	else                	// not a PIR, then a door sensor
         	{
             // XXX if (i <= MAX_DOOR)
-            if (sensor_info[i].sensorType == eSeparation)
+            if (sensor_info[i].sensorType == eExitDoor)
             {
             	processDoorSensor(i);
         	  }
@@ -667,29 +678,41 @@ void writeConfig()
 	char buf[CONFIG_BUFR];  	// temporary buffer to write to non-volatile memory
 	String temp;            	// temporary string storage
 
-	int addr;
+    int addr;
+	int addr_Version = eepromOffset;
+    int addr_utcOffset = eepromOffset +            CONFIG_BUFR;
+    int addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
+    int addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
+    int addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
+    int addrConfigExtA = eepromOffset =         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    int addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    int addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
 
 	// write the ID into non-volatile memory
 	id.toCharArray(buf, id.length()+1);
 	buf[id.length()+1] = '\0'; // terminate string with a null
-	addr=eepromOffset + 0; //first address
-	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+	i2cEepromWritePage(0x50, addr_Version, buf, sizeof(buf)); // write to EEPROM
 
 	// write the timezone into non-volatile memory
 	utcOffset.toCharArray(buf,utcOffset.length()+1);
 	buf[id.length()+1] = '\0'; // terminate string with a null
-	addr=eepromOffset + CONFIG_BUFR; //timezone address
-	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+	i2cEepromWritePage(0x50, addr_utcOffset, buf, sizeof(buf)); // write to EEPROM
 
 	// write the dst info into non-volatile memory
 	observeDST.toCharArray(buf,observeDST.length()+1);
 	buf[id.length()+1] = '\0'; // terminate string with a null
-	addr=eepromOffset + 2*CONFIG_BUFR; //dst address
-	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+	i2cEepromWritePage(0x50, addr_dst, buf, sizeof(buf)); // write to EEPROM
+
+    String ExtensionA = "ExtensionA";
+    ExtensionA.toCharArray(buf,ExtensionA.length()+1);
+    buf[ExtensionA.length()+1] = '\0';
+    i2cEepromWritePage(0x50,addrConfigExtA, buf, sizeof(buf)); // write to EEPROM
 
 	// write the sensor names and trip codes to non volatile memory
 	for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
+        int addr_entryOffset = i * CONFIG_BUFR;
+
     	temp = sensor_info[i].sensorName;
     	// check to see if name is too long, truncate if it is
     	if(temp.length() >= (CONFIG_BUFR - 2))
@@ -700,16 +723,32 @@ void writeConfig()
     	// store names
     	temp.toCharArray(buf, temp.length()+1);
     	buf[temp.length()+1] = '\0'; // terminate string with a null
-    	addr=eepromOffset + (i+3) * CONFIG_BUFR; //names address
+    	addr = addrStart_sensorName + addr_entryOffset; //names address
     	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 
     	// store trip codes
     	temp = "";
-    	temp += sensor_info[i].activateCode;
+    	temp += sensor_info[i].activateCode; // String concat does conversion from long
     	temp.toCharArray(buf, temp.length()+1);
     	buf[temp.length()+1] = '\0'; // terminate string with a null
-    	addr=eepromOffset + (i+3+MAX_WIRELESS_SENSORS) * CONFIG_BUFR; //trip codes address
+    	addr = addrStart_activateCode + addr_entryOffset; //trip codes address
     	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+
+        // store sensor type
+        temp = "";
+        temp += sensor_info[i].sensorType;  // String concat does conversion from enum
+        temp.toCharArray(buf, temp.length()+1);
+        buf[temp.length()+1] = '\0'; // terminate string with a null
+        addr = addrStart_sensorType + addr_entryOffset; //trip codes address
+        i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+
+        // store alarm on trip
+        temp = "";
+        temp += sensor_info[i].alarmOnTrip; // String concat does conversion from boolean
+        temp.toCharArray(buf, temp.length()+1);
+        buf[temp.length()+1] = '\0'; // terminate string with a null
+        addr = addrStart_sensorAlarm + addr_entryOffset; //trip codes address
+        i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 	}
 
 	return;
@@ -730,11 +769,19 @@ void restoreConfig()
 {
 	String ID = "SIS-2015"; 	// the ID value
 	char buf[CONFIG_BUFR];  	// temporary buffer to write to non-volatile memory
-	int addr;
+
+    int addr;
+	int addr_Version = eepromOffset;
+    int addr_utcOffset = eepromOffset +            CONFIG_BUFR;
+    int addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
+    int addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
+    int addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
+    int addrConfigExtA = eepromOffset =         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    int addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    int addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
 
 	// read the ID and return immediately if ID is not correct
-	addr=eepromOffset + 0; //first address
-	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+	i2cEepromReadPage(0x50, addr_Version, buf, CONFIG_BUFR);
 
 	// make sure that the buffer contains a valid string
 	buf[31] = '\0';
@@ -742,41 +789,84 @@ void restoreConfig()
 
 	if(data.equals(ID)) 	// restore the rest of the config
 	{
+
     	// restore the timezone
-    	addr=eepromOffset + CONFIG_BUFR; //timezone address
-    	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+    	i2cEepromReadPage(0x50, addr_utcOffset, buf, CONFIG_BUFR);
 
     	// make sure that the buffer contains a valid string
     	buf[31] = '\0';
     	utcOffset = buf;
 
     	// restore the dst
-    	addr=eepromOffset + 2*CONFIG_BUFR; //dst address
-    	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+    	i2cEepromReadPage(0x50, addr_dst, buf, CONFIG_BUFR);
 
     	// make sure that the buffer contains a valid string
     	buf[31] = '\0';
     	observeDST = buf;
 
+        // does the stored config support extensionA ?
+        i2cEepromReadPage(0x50,addrConfigExtA, buf, CONFIG_BUFR);
+        buf[31] = '\0'; // make sure that the buffer contains a valid string
+        String temp = String(buf);
+        bool bSupportsExtA = false;
+        if (temp.startsWith("ExtensionA")) {
+            bSupportsExtA = true;
+        }
+
     	// restore the sensor names and trip codes
     	for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
     	{
-        	// retrieve names
-        	addr=eepromOffset + (i+3) * CONFIG_BUFR; //names address
-        	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+            int addr_entryOffset = i * CONFIG_BUFR;
 
-        	// make sure that the buffer contains a valid string
-        	buf[31] = '\0';
+        	// retrieve names
+        	addr=addrStart_sensorName + addr_entryOffset; //names address
+        	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+        	buf[31] = '\0'; // make sure that the buffer contains a valid string
             sensor_info[i].sensorName = buf;
 
         	// retrieve trip codes
-        	addr=eepromOffset + (i+3+MAX_WIRELESS_SENSORS) * CONFIG_BUFR; //trip codes address
+        	addr=addrStart_activateCode + addr_entryOffset; //trip codes address
         	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
-
-        	// make sure that the buffer contains a valid string
-        	buf[31] = '\0';
-        	String temp(buf);
+        	buf[31] = '\0'; // make sure that the buffer contains a valid string
+        	String temp = String(buf);
             sensor_info[i].activateCode = temp.toInt();
+
+            if (bSupportsExtA) {
+                // retrieve sensor type
+                addr=addrStart_sensorType + addr_entryOffset; //type enum address
+                i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+                buf[31] = '\0'; // make sure that the buffer contains a valid string
+                temp = String(buf);
+                sensor_info[i].sensorType = (enum_sensorType)temp.toInt();
+
+                // retrieve alarm on trip
+        	    addr=addrStart_sensorAlarm + addr_entryOffset; //alarm boolean address
+        	    i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+        	    buf[31] = '\0'; // make sure that the buffer contains a valid string
+        	    temp = String(buf);
+                sensor_info[i].alarmOnTrip = (bool)temp.toInt();
+
+            } else {
+
+                // EEPROM store does not have extensionA values
+                // MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
+                                                //  MAX_WIRELESS_SENSORS are non-PIR sensors
+                // MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
+                if (i <= 11) {
+                    sensor_info[i].sensorType = ePIR;
+                } else if (i <= 19) {
+                    sensor_info[i].sensorType = eExitDoor;
+                } else {
+                    sensor_info[i].sensorType = eSeparation;
+                }
+
+                // ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
+                if (i == 19) {
+                    sensor_info[i].alarmOnTrip = true;
+                }
+
+            }
+
     	}
 
 	} else {
@@ -785,6 +875,8 @@ void restoreConfig()
         observeDST = "N";
         for (int i = 0; i < MAX_WIRELESS_SENSORS; i++) {
             sensor_info[i].sensorName = "Unknown" + String(i);
+            sensor_info[i].sensorType = esensorTypeUnknown;
+            sensor_info[i].alarmOnTrip = false;
         }
     }
 
@@ -805,6 +897,7 @@ void restoreConfig()
 //
 void i2cEepromWritePage( int deviceAddress, unsigned int eeAddressPage, char* data, byte length )
 {
+    // XXX shouldn't this be 30?
 	if(length > 32) return; // make sure you don't blow the I2C library buffer!
 	Wire.beginTransmission(deviceAddress);
 	Wire.write((byte)( (eeAddressPage & 0xFF00) >> 8)); // MSB
@@ -1039,6 +1132,10 @@ int registrar(String action)
         	registrationInformation += sensor_info[location].activateCode;
         	registrationInformation += " is for ";
         	registrationInformation += sensor_info[location].sensorName;
+        	registrationInformation += ", of type ";
+        	registrationInformation += sensorType_strings[sensor_info[location].sensorType];
+        	registrationInformation += ". Alarm: ";
+        	registrationInformation += sensor_info[location].alarmOnTrip;
         	Serial.println(registrationInformation);
 
         	// write to the cloud
@@ -1056,6 +1153,8 @@ int registrar(String action)
         	// delete action
             sensor_info[location].sensorName = "UNREGISTERED SENSOR";
             sensor_info[location].activateCode = 0L;
+            sensor_info[location].sensorType = esensorTypeUnknown;
+            sensor_info[location].alarmOnTrip = false;
         	break;
 
     	case REG:
@@ -1075,6 +1174,28 @@ int registrar(String action)
         	// perform the new sensor registration function
             sensor_info[location].sensorName = g_dest[3];
             sensor_info[location].activateCode = g_dest[2].toInt();
+
+            /* XXX from old code
+            const int MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
+                                        	//  MAX_WIRELESS_SENSORS are non-PIR sensors
+            const int MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
+            */
+            if (location <= 11) {
+                sensor_info[location].sensorType = ePIR;
+            } else if (location <= 19) {
+                sensor_info[location].sensorType = eExitDoor;
+            } else {
+                sensor_info[location].sensorType = eSeparation;
+            }
+
+            /* XXX from old code
+            const int ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
+            */
+            if (location == 19) {
+                sensor_info[location].alarmOnTrip = true;
+            }
+
+            // XXX sensor_info[location].sensorType = ;  NEED TO ADD PARAMETER FOR THIS
             // XXX sensor_info[location].alarmOnTrip = ;    NEED TO ADD PARAMETER FOR THIS
             break;
 
