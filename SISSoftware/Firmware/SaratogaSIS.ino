@@ -38,6 +38,9 @@
 //
 //  Version 1.01.  12/30/15.
 const String VERSION = "2.00";   	// current firmware version
+//  v 2.0 removed global arrays and their associated constants. Added structures to handle the
+//      SIS sensor config. Changes read/write config to handle new structures and to be backwards
+//      compatible.
 //
 //  (c) 2015 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
