@@ -13,14 +13,15 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
-
 #include "application.h"
-
+;
 // convenience constants
 const String DOUBLEQ = "\"";
 
 // Configuration constants
 const int MAX_WIRELESS_SENSORS = 20;
+const int BUF_LEN = 100;     	// circular buffer size. Too big and you run out of RAM.
+
 
 // constants for SIS operation. Will be stored/retrieved from eeprom
 extern String utcOffset;    // PST is -8
@@ -49,6 +50,8 @@ struct type_sensor {
 
 // Holds information about EVERY sensor configured in the system
 extern type_sensor sensor_info[];
+
+
 
 
 #endif //prevent double includes

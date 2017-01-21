@@ -39,8 +39,11 @@ const String VERSION = "2.00";   	// current firmware version
 //  (c) 2015 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
 
+
 #include <SISGlobals.h>
 #include <SISConfigStore.h>
+#include <SISCircularBuff.h>
+
 
 /************************************* Global Constants ****************************************************/
 
@@ -51,7 +54,6 @@ const int TOLERANCE = 60;  	// % timing tolerance on HIGH or LOW values for code
 const unsigned long ONE_DAY_IN_MILLIS = 86400000L;	// 24*60*60*1000
 
 const unsigned long FILTER_TIME = 5000L;  // Once a sensor trip has been detected, it requires 5 seconds before a new detection is valid
-const int BUF_LEN = 100;     	// circular buffer size.
 const int MAX_SUBSTRINGS = 6;   // the largest number of comma delimited substrings in a command string
 const byte NUM_BLINKS = 2;  	// number of times to blink the D7 LED when a sensor trip is received
 const unsigned long BLINK_TIME = 300L; // number of milliseconds to turn D7 LED on and off for a blink
@@ -111,22 +113,7 @@ char cloudMsg[80];  	// buffer to hold last sensor tripped message
 char cloudBuf[90];  	// buffer to hold message read out from circular buffer
 char registrationInfo[80]; // buffer to hold information about registered sensors
 
-String cBuf[BUF_LEN];   // circular buffer to store events and messages as they happen
-                        // Expected format of the string stored in cBuf is:
-                        // TYPE,SEQUENCENUMBER,INDEX,EPOCTIME
-                        // where
-                        //    TYPE is A (advisory) or S (sensor)
-                        //    SEQUENCENUMBER is a monotonically increasing global (eventNumber)
-                        //    INDEX is into sensorName[] for type sensor
-                        //          or enum_messageIndex for type advisory
-                        //    EPOCTIME is when the entry happened
-                        // see cBufInsert(), cBufRead(), readFromBuffer(), logSensor(), logMessage()
 
-int head = 0;       	// index of the head of the circular buffer
-int tail = 0;       	// index of the tail of the buffer
-int g_numToPublish = -1; // Number of entries in cBuf[] that remain to be published to spark cloud.
-                         // This is incremented when events are added to the cBuf[] and decremented
-                         // when an entry is published to the spark cloud.
 
 char config[120];    	// buffer to hold local configuration information
 long eventNumber = 0;   // grows monotonically to make each event unique
@@ -918,6 +905,43 @@ int readBuffer(String location)
 
 /*********************************end of readBuffer() *****************************************/
 
+/****************************************** publishCircularBuffer () ************************/
+// publishCircularBuffer()
+//
+// This routine publishes recent events in the circular buffer cBuf[] to the Spark Cloud.
+// It uses a local static variable to be sure that events are not published more frequently than once
+// every 2 seconds.
+// This routine is called once each time through the main loop. It could be called anytime.
+//
+void publishCircularBuffer() {
+
+    static unsigned long lastPublishTime = 0;
+
+    if (getNumToPublish() >= 0 ) {
+
+        unsigned long currentTime = millis();
+        if (currentTime - lastPublishTime > 4000)
+        {
+
+            char localBuf[90];
+
+            readFromBuffer(getNumToPublish(), localBuf);      // read out the latest logged entry into localBuf
+
+            if(sparkPublish("LogEntry", localBuf, 60))     // ... and publish it to the cloud for xteranl logging
+            {
+                decrementNumToPublish();
+
+            };
+            lastPublishTime = currentTime;
+
+        }
+
+    }
+
+}
+
+/****************************************** End of publishCircularBuffer () ************************/
+
 /********************************** readFromBuffer() ******************************************/
 // readFromBuffer(): utility fujction to read from the circular buffer into the
 //  character array passed in as stringPtr[].
@@ -934,6 +958,10 @@ int readBuffer(String location)
 //            (S:nnn) SENSORNUMBER detected at DATETIME Z (epoc:EPOCTIME)
 //
 //  Return:  0 if a valid location was specified, otherwise, -1.
+// XXX this routine expects the circular buffer entries to be in a very
+//     specific format. Perhaps we should specify that format, or verify it,
+//     in cBufInsert? Or have a magic number in the entry so that this routine
+//     can test for the magic number before trying to format the entry.
 
 int readFromBuffer(int offset, char stringPtr[])
 {
@@ -1007,98 +1035,6 @@ int readFromBuffer(int offset, char stringPtr[])
 }
 
 /********************************** end of readFromBuffer() ****************************************/
-
-/******************************************** cBufInsert() *****************************************/
-// cBufInsert():  insert a string into the circular buffer at the current tail position.
-//  Arguments:
-//	String data:  the string data (string object) to store in the circular buffer
-//	return:  none.
-
-void cBufInsert(String data)
-{
-  static boolean fullBuf = false;	// false for the first pass (empty buffer locations)
-
-  cBuf[tail] = data;	// write the data at the end of the buffer
-  g_numToPublish++;     // note that there is a new buffer entry to publish
-
-  //  adjust the tail pointer to the next location in the buffer
-  tail++;
-  if(tail >= BUF_LEN)
-  {
-	tail = 0;
-	fullBuf = true;
-  }
-
-  //  the first time through the buffer, the head pointer stays put, but after the
-  //	buffer wraps around, the head of the buffer is the tail pointer position
-  if(fullBuf)
-  {
-	head = tail;
-  }
-
-}
-/***************************************** end of cBufInsert() **************************************/
-
-/********************************************* cBufRead() *******************************************/
-// cBufRead():  read back a String object from the "offset" location in the cirular buffer.  The
-//	offset location of zero is the latest value in (tail of) the circular buffer.
-//  Arguments:
-//	int offset:  the offset into the buffer where zero is the most recent entry in the circular buffer
-//       and 1 is the next most recent, etc.
-//  Return:  the String at the offset location in the circular buffer.
-
-String cBufRead(int offset)
-{
-  int locationInBuffer;
-
-  locationInBuffer = tail -1 - offset;
-  if(locationInBuffer < 0)
-  {
-    locationInBuffer += BUF_LEN;
-  }
-
-  return cBuf[locationInBuffer];
-
-}
-/****************************************** end of cBufRead() ***************************************/
-
-/****************************************** publishCircularBuffer () ************************/
-// publishCircularBuffer()
-//
-// This routine publishes recent events in the circular buffer cBuf[] to the Spark Cloud. It
-// uses the global variable g_numToPublish to keep track of how many events are awaiting publication.
-// It uses a local static variable to be sure that events are not published more frequently than once
-// every 2 seconds.
-// This routine is called once each time through the main loop. It could be called anytime.
-//
-void publishCircularBuffer() {
-
-    static unsigned long lastPublishTime = 0;
-
-    if (g_numToPublish >= 0 ) {
-
-        unsigned long currentTime = millis();
-        if (currentTime - lastPublishTime > 4000)
-        {
-
-            char localBuf[90];
-
-            readFromBuffer(g_numToPublish, localBuf);      // read out the latest logged entry into localBuf
-
-            if(sparkPublish("LogEntry", localBuf, 60))     // ... and publish it to the cloud for xteranl logging
-            {
-                g_numToPublish--;
-
-            };
-            lastPublishTime = currentTime;
-
-        }
-
-    }
-
-}
-
-/****************************************** End of publishCircularBuffer () ************************/
 
 /****************************************** simulateSensor() ***************************************/
 // simulateSensor(): this funtion is used to simulate sensors - for testing only.
