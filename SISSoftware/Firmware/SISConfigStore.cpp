@@ -28,6 +28,23 @@ const int CONFIG_BUFR = 32; 	// buffer to use to store and retrieve data from no
 // variable to hold the virtual eeprom device used to store the config
 int eepromOffset;
 
+// EEPROM Offsets
+// These values are used to write buffers of CONFIG_BUFR length to the
+// EEPROM. The value is the location of the beginning of the value or,
+// in the case of an array, the location of the beginning of the first
+// element of the array.
+int addr_Version;
+int addr_utcOffset;
+int addr_dst;
+int addrStart_sensorName; 		// start of array
+int addrStart_activateCode;		// start of array
+int addrConfigExtA;				// special marker to indicate that additional config
+								// info is present. Used so extended configs can be
+								// read by code supporting SIS-2015 format.
+int addrStart_sensorType;		// start of array
+int addrStart_sensorAlarm;		// start of array
+
+
 // ***************************  Internal Routines Declares ahead
 // Writes one page of up to 30 bytes to the EEPROM
 void i2cEepromWritePage( int deviceAddress, unsigned int eeAddressPage, char* data, byte length );
@@ -52,6 +69,17 @@ void configStoreInit(){
 	  eepromOffset = MAX_VIRTUAL_DEVICES - 1;
 	}
 
+	// initialize EEPROM offsets
+	addr_Version = eepromOffset;
+    addr_utcOffset = eepromOffset +            CONFIG_BUFR;
+    addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
+    addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
+    addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
+    addrConfigExtA = eepromOffset +         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+    addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+
+
 }
 //************************************ end  configStoreInit() **************************************
 
@@ -70,19 +98,12 @@ void configStoreInit(){
 
 void writeConfig()
 {
+
 	String id = "SIS-2015"; 	// the ID value
 	char buf[CONFIG_BUFR];  	// temporary buffer to write to non-volatile memory
 	String temp;            	// temporary string storage
 
-    int addr;
-	int addr_Version = eepromOffset;
-    int addr_utcOffset = eepromOffset +            CONFIG_BUFR;
-    int addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
-    int addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
-    int addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
-    int addrConfigExtA = eepromOffset =         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    int addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    int addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+	int addr;
 
 	// write the ID into non-volatile memory
 	id.toCharArray(buf, id.length()+1);
@@ -163,18 +184,11 @@ void writeConfig()
 
 void restoreConfig()
 {
+
 	String ID = "SIS-2015"; 	// the ID value
 	char buf[CONFIG_BUFR];  	// temporary buffer to write to non-volatile memory
 
     int addr;
-	int addr_Version = eepromOffset;
-    int addr_utcOffset = eepromOffset +            CONFIG_BUFR;
-    int addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
-    int addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
-    int addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
-    int addrConfigExtA = eepromOffset =         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    int addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    int addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
 
 	// read the ID and return immediately if ID is not correct
 	i2cEepromReadPage(0x50, addr_Version, buf, CONFIG_BUFR);

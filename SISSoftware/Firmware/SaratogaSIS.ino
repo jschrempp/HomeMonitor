@@ -86,7 +86,7 @@ String g_dest[MAX_SUBSTRINGS];
 // Strings to publish data to the cloud
 String sensorCode = String("");
 String g_bufferReadout = String("");
-char cloudDebug[80];    // used when debugging to give the debug client a message
+
 char cloudMsg[80];  	// buffer to hold last sensor tripped message
 char cloudBuf[90];  	// buffer to hold message read out from circular buffer
 char registrationInfo[80]; // buffer to hold information about registered sensors
@@ -681,6 +681,7 @@ int registrar(String action)
 	const int OFFSET = 3;   // action is to set the local utc offset
 	const int DST = 4;  	// action is to set the local observe DST (yes or no)
 	const int STORE = 5;	// action is to store the sensor configuration to non-volatile memory
+    const int LOAD = 6;     // action is to restore the config from non-volatile memory
 	const int UKN = -1; 	// action is unknown
 
 	int requestedAction;
@@ -732,10 +733,17 @@ int registrar(String action)
                     	{
                         	requestedAction = STORE;
                     	}
-                    	else
-                    	{
-                        	requestedAction = UKN;
-                    	}
+                        else
+                        {
+                             if(g_dest[0] == "load")
+                            {
+                                requestedAction = LOAD;
+                            }
+                        	else
+                        	{
+                            	requestedAction = UKN;
+                        	}
+                        }
                 	}
 
             	}
@@ -844,6 +852,10 @@ int registrar(String action)
     	case STORE:
         	writeConfig();
         	break;
+
+        case LOAD:
+            restoreConfig();
+            break;
 
     	default:
             numSubstrings = -1; // return an error code for unknown command

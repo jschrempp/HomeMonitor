@@ -13,7 +13,8 @@
 
 #include <SISGlobals.h>
 
-
+// this variable is exposed to the cloud
+char cloudDebug[80];    // used when debugging to give the debug client a message
 
 // SIS config data. This info is stored/retrieved from non-volatile memory
 String utcOffset = "-8.0";	// Pacific Standard Time

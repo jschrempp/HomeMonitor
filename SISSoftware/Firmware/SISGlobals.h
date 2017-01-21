@@ -22,6 +22,8 @@ const String DOUBLEQ = "\"";
 const int MAX_WIRELESS_SENSORS = 20;
 const int BUF_LEN = 100;     	// circular buffer size. Too big and you run out of RAM.
 
+// this variable is exposed to the cloud
+extern char cloudDebug[];    // used when debugging to give the debug client a message
 
 // constants for SIS operation. Will be stored/retrieved from eeprom
 extern String utcOffset;    // PST is -8
