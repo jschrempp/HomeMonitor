@@ -1,6 +1,5 @@
 #ifndef SISGlOBALS_H_INCLUDE
 #define SISGlOBALS_H_INCLUDE
-
 /***************************************************************************************************/
 // SISGlobals.h
 //  Defines all global variables used by the SIS firmware. Note that any variables
@@ -14,7 +13,14 @@
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
 #include "application.h"
-;
+
+
+// array to hold parsed substrings from a command string
+// NOTE: used by parser in SISUtilities.
+// XXX we should eventually eliminate this. See note in Parser routine header.
+const int MAX_SUBSTRINGS = 6;   // the largest number of comma delimited substrings in a command string
+extern String g_dest[];
+
 // convenience constants
 const String DOUBLEQ = "\"";
 
@@ -52,8 +58,6 @@ struct type_sensor {
 
 // Holds information about EVERY sensor configured in the system
 extern type_sensor sensor_info[];
-
-
 
 
 #endif //prevent double includes

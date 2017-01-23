@@ -10,8 +10,12 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
-
 #include <SISGlobals.h>
+
+// array to hold parsed substrings from a command string
+// NOTE: used by parser in SISUtilities.
+// XXX we should eventually eliminate this. See note in Parser routine header.
+String g_dest[MAX_SUBSTRINGS];
 
 // this variable is exposed to the cloud
 char cloudDebug[80];    // used when debugging to give the debug client a message

@@ -54,7 +54,6 @@ void decode(unsigned int changeCount);
 /*********************** end of Declare aheads ******************************/
 
 
-
 /************************************** initISR() ***********************************************/
 // Called once to initialize ISR routines
 void initISR() {

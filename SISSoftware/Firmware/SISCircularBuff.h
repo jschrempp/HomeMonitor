@@ -31,4 +31,10 @@ void cBufInsert(String data);
 // This read is non destructive
 String cBufRead(int offset);
 
+// Read the circular buffer at position Offset and return a string in stringPtr
+// that is formatted for human consumption. Returns -1 if the specified Offset
+// is beyong the end of the circular buffer.
+//    offset is an absolute position in cBuf, not relative to current head/tail
+int readFromBuffer(int offset, char stringPtr[]);
+
 #endif // prevent double includes

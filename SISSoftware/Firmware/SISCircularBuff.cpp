@@ -11,6 +11,7 @@
 /***************************************************************************************************/
  #include <SISCircularBuff.h>
  #include <SISGlobals.h>
+ #include <SISUtils.h>
 
  String cBuf[BUF_LEN];   // circular buffer to store events and messages as they happen
                          // Expected format of the string stored in cBuf is:
@@ -100,3 +101,100 @@ String cBufRead(int offset)
 
 }
 /****************************************** end of cBufRead() ***************************************/
+
+
+/********************************** readFromBuffer() ******************************************/
+// readFromBuffer(): utility fujction to read from the circular buffer into the
+//  character array passed in as stringPtr[].
+//  Arguments:
+//      int offset: the offset into the circular buffer to read from. 0 is the latest entry.  The
+//          next to latest entry is 1, etc. back to BUF_LEN -1.
+//       	BUF_LEN can be determined from the cloud variable "bufferSize".  If location exceeds
+//       	BUF_LEN - 1, the value that is read out is the oldest value in the buffer, and
+//       	-1 is returned by the function.  Otherwise, the value is determined by location
+//       	and 0 is returned by this function.
+//      char stringPtr[]: pointer to the string that will be returned from this
+//        function. The format of the string expected by the web site is one of:
+//            (S:nnn) SENSORNAME tripped at DATETIME Z (epoc:EPOCTIME)
+//            (S:nnn) SENSORNUMBER detected at DATETIME Z (epoc:EPOCTIME)
+//
+//  Return:  0 if a valid location was specified, otherwise, -1.
+// XXX this routine expects the circular buffer entries to be in a very
+//     specific format. Perhaps we should specify that format, or verify it,
+//     in cBufInsert? Or have a magic number in the entry so that this routine
+//     can test for the magic number before trying to format the entry.
+
+int readFromBuffer(int offset, char stringPtr[])
+{
+	int result;     	// the result code to return
+    String g_bufferReadout = String("");   // temporary use
+
+
+	// check and fix, if necessary, the offset into the circular buffer
+	if(offset >= BUF_LEN)
+	{
+    	offset = BUF_LEN - 1;   // the maximum offset possible
+    	result = -1;        	// return the error code
+	}
+	else
+	{
+    	result = 0;         	// return no error code
+	}
+
+
+	// now retrieve the data requested from the circular buffer and place the result string
+    // in g_bufferReadout
+	g_bufferReadout = "" + cBufRead(offset);
+
+	#ifdef DEBUG
+    	Serial.println(g_bufferReadout);
+	#endif
+
+	// create the readout string for the cloud from the buffer data
+	if(g_bufferReadout != "")  // skip empty log entries
+	{
+    	int index;
+
+       // parse the comma delimited string into its substrings
+      // result of parse is in global array g_dest[]
+
+    	parser(g_bufferReadout);
+
+    	// format the sequence number and place into g_bufferReadout
+        g_bufferReadout = "(S:";
+        g_bufferReadout += g_dest[1];
+        g_bufferReadout += ")";
+
+        // Determine message type
+    	if(g_dest[0] == "S")  	// sensor type message
+    	{
+
+        	// format the sensor Name from the index
+        	index = g_dest[2].toInt();
+            g_bufferReadout += sensor_info[index].sensorName;
+            g_bufferReadout += " tripped at ";
+    	}
+    	else    	// advisory type message
+    	{
+            g_bufferReadout += g_dest[2];
+            g_bufferReadout += " detected at ";
+    	}
+
+    	// add in the timestamp
+
+    	index = g_dest[3].toInt();
+        g_bufferReadout += Time.timeStr(index).c_str();
+        g_bufferReadout += " Z (epoch:";
+        g_bufferReadout += g_dest[3];
+        g_bufferReadout += "Z)";
+
+	}
+
+    g_bufferReadout.toCharArray(stringPtr, g_bufferReadout.length() + 1 );
+	stringPtr[g_bufferReadout.length() + 2] = '\0';
+
+	return result;
+
+}
+
+/********************************** end of readFromBuffer() ****************************************/

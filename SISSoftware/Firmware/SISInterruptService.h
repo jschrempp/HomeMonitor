@@ -1,6 +1,5 @@
 #ifndef SISINTERRUPTSERVICE_H_INCLUDE
 #define SISINTERRUPTSERVICE_H_INCLUDE
-
 /***************************************************************************************************/
 // SISInterruptService.h
 //  The routines to handle interrupt servicing and decoding of the protocol.
@@ -29,10 +28,6 @@ unsigned long getNewSensorCode();
 
 // Call to keep a simulation test running
 void simulateSensor();
-
-
-
-
 
 
 #endif  // prevent duplicate header includes
