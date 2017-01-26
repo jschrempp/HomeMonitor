@@ -18,5 +18,11 @@
 // NOTE: result returned via global array
 int parser(String source);
 
+// blink the D7 LED without blocking
+boolean nbBlink(byte numBlinks, unsigned long blinkTime);
+
+// make a JSON element of "name":"value"
+String makeNameValuePair(String name, String value);
+
 
 #endif  // end of header duplication prevention

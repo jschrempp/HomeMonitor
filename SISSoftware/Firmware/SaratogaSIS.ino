@@ -176,15 +176,6 @@ void setup()
 
   toggleD7LED();
 
-  /*
-  // Initialize the lastTripTime[] array
-  //XXX won't need to do this.
-  for (int i = 0; i < MAX_WIRELESS_SENSORS; i++)
-  {
-  	lastTripTime[i] = 0L;
-  }
-*/
-
 #ifdef DEBUG
   Serial.println("End of setup()");
 #endif
@@ -215,7 +206,7 @@ void loop()
 	knownCode = false;
 	for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
-    	if ( newSensorCode == sensor_info[i].activateCode ) // XXX activateCode[i])  )
+    	if ( newSensorCode == sensor_info[i].activateCode )
     	{
         	knownCode = true;
         	break;
@@ -227,14 +218,13 @@ void loop()
 	{
     	unsigned long now;
     	now = millis();
-    	// XXX if((now - lastTripTime[i]) > FILTER_TIME) // filter out multiple codes
     	if( (now - sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
     	{
         	// Code for the sensor trip message
         	sensorCode = "Received sensor code: ";
         	sensorCode += newSensorCode;
         	sensorCode += " for ";
-        	sensorCode += sensor_info[i].sensorName; //XXX sensorName[i];
+        	sensorCode += sensor_info[i].sensorName;
 
         	#ifdef DEBUG
             	Serial.println(sensorCode);  // USB print for debugging
@@ -242,7 +232,7 @@ void loop()
 
         	#ifdef DEBUG_EVENT
             	debug = "Event: ";
-            	debug += sensor_info[i].sensorName; //XXX  sensorName[i]);
+            	debug += sensor_info[i].sensorName;
             	publishDebugRecord(debug);
         	#endif
 
@@ -257,14 +247,12 @@ void loop()
         	publishEvent(String(i));
 #endif
         	// determine type of sensor and process accordingly
-        	// XXX if(i <= MAX_PIR)    	// then the sensor is a PIR
-            if (sensor_info[i].sensorType == ePIR)
+        	if (sensor_info[i].sensorType == ePIR)
         	{
             	processPIRSensor(i);
         	}
         	else                	// not a PIR, then a door sensor
         	{
-            // XXX if (i <= MAX_DOOR)
             if (sensor_info[i].sensorType == eExitDoor)
             {
             	processDoorSensor(i);
@@ -275,7 +263,6 @@ void loop()
             }
           }
 
-          //XXX if (i == ALARM_SENSOR) {
           if (sensor_info[i].alarmOnTrip) {
 
             sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
@@ -658,6 +645,7 @@ int registrar(String action)
 	int location;                   	// numerical value of ordinal number of the sensor info
 
 	// parse the string argument into its substrings
+    // parse results are in g_dest[]
 	numSubstrings = parser(action);
 
 	if(numSubstrings < 1) //  invalid command string
@@ -896,84 +884,6 @@ void publishCircularBuffer() {
 
 /****************************************** End of publishCircularBuffer () ************************/
 
-/************************************** nbBlink() ************************************************/
-// nbBlink():  Blink the D7 LED without blocking.  Note: setup() must declare
-//          	pinMode(D7, OUTPUT) in order for this function to work
-//  Arguments:
-//  	numBlinks:  the number of blinks for this function to implement
-//  	blinkTime:  the time, in milliseconds, for the LED to be on or off
-//
-//  Return:  true if function is ready to be triggered again, otherwise false
-//
-
-boolean nbBlink(byte numBlinks, unsigned long blinkTime)
-{
-	const byte READY = 0;
-	const byte LED_ON = 1;
-	const byte LED_OFF = 2;
-	const byte NUM_BLINKS = 3;
-
-
-	static byte state = READY;
-	static unsigned long lastTime;
-	static unsigned long newTime;
-	static byte blinks;
-
-	newTime = millis();
-
-	switch(state)
-	{
-    	case(READY):
-        	digitalWrite(D7, HIGH); 	// turn the LED on
-        	state = LED_ON;
-        	lastTime = newTime;
-        	blinks = numBlinks;
-        	break;
-
-    	case(LED_ON):
-        	if( (newTime - lastTime) >= blinkTime) // time has expired
-        	{
-            	state = LED_OFF;
-            	lastTime = newTime;
-        	}
-        	break;
-
-    	case(LED_OFF):
-        	digitalWrite(D7, LOW);  	// turn the LED off
-        	if( (newTime - lastTime) >= blinkTime)
-        	{
-            	if(--blinks > 0) 	// another blink set is needed
-            	{
-                	digitalWrite(D7, HIGH);
-                	state = LED_ON;
-                	lastTime = newTime;
-            	}
-            	else
-            	{
-                	state = READY;
-            	}
-
-        	}
-        	break;
-
-    	default:
-        	digitalWrite(D7, LOW);
-        	state = READY;
-
-	}
-
-	if(state == READY)
-	{
-    	return true;
-	}
-	else
-	{
-    	return false;
-	}
-}
-
-/*********************************** end of nbBlink() ********************************************/
-
 /************************************ publishEvent() *********************************************/
 // publishEvent():  Function to pubish a Core event to the cloud in JSON format
 //  Arguments:
@@ -1067,16 +977,6 @@ int sparkPublish (String eventName, String msg, int ttl)
 
 }
 
-
-
-String makeNameValuePair(String name, String value)
-{
-	String nameValuePair = "";
-	nameValuePair += DOUBLEQ + name + DOUBLEQ;
-	nameValuePair += ":";
-	nameValuePair += DOUBLEQ + value + DOUBLEQ;
-	return nameValuePair;
-}
 
 /********************************* end of publishEvent() *******************************/
 
