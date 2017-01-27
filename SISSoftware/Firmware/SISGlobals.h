@@ -12,8 +12,10 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
-#include "application.h"
+#define BUILDING_SIS   //used in the rare case where a TPP module has some SIS specific code
+                       //If not an SIS project, don't use this define.
 
+#include "application.h"
 
 // array to hold parsed substrings from a command string
 // NOTE: used by parser in SISUtilities.

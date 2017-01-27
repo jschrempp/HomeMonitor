@@ -103,6 +103,7 @@ String cBufRead(int offset)
 /****************************************** end of cBufRead() ***************************************/
 
 
+#ifdef BUILDING_SIS
 /********************************** readSISFromBuffer() ******************************************/
 // readSISFromBuffer(): utility fujction to read from the circular buffer into the
 //  character array passed in as stringPtr[].
@@ -199,3 +200,4 @@ int readSISFromBuffer(int offset, char stringPtr[])
 }
 
 /********************************** end of readSISFromBuffer() ****************************************/
+#endif  // BUILDING_SIS
