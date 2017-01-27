@@ -1,5 +1,5 @@
 /***************************************************************************************************/
-// SISCircularBuff.cpp
+// TPPCircularBuff.cpp
 //  A cicular buffer used by SIS to hold a set sensor trips and events.
 //
 //  Use of this software is subject to the Terms of Use which can be found at:
@@ -9,9 +9,9 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
- #include <SISCircularBuff.h>
+ #include <TPPCircularBuff.h>
  #include <SISGlobals.h>
- #include <SISUtils.h>
+ #include <TPPUtils.h>
 
  String cBuf[BUF_LEN];   // circular buffer to store events and messages as they happen
                          // Expected format of the string stored in cBuf is:

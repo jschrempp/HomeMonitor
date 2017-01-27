@@ -13,9 +13,9 @@
 
 #include <SISGlobals.h>
 #include <SISConfigStore.h>
-#include <SISCircularBuff.h>
+#include <TPPCircularBuff.h>
 #include <SISInterruptService.h>
-#include <SISUtils.h>
+#include <TPPUtils.h>
 
 /***************************************************************************************************/
 // saratogaSIS: SIS firmware - this is the software that is upoaded to the SIS Hub and performs
@@ -824,6 +824,8 @@ int registrar(String action)
 /********************************** end of registrar() ****************************************/
 
 /************************************* readBuffer() ********************************************/
+// EXPOSED TO THE PARTICLE CLOUD
+// SIS CLIENT CALLS THIS ROUTINE
 // readBuffer(): read the contents of the circular buffer into the global variable "cloudBuf"
 //  Arguments:
 //  	String location:  numerical location of the buffer data to read.  The location is relative

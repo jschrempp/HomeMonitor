@@ -1,8 +1,8 @@
-#ifndef SISCIRCULARBUFF_H_INCLUDE
-#define SISCIRCULARBUFF_H_INCLUDE
+#ifndef TPPCIRCULARBUFF_H_INCLUDE
+#define TPPCIRCULARBUFF_H_INCLUDE
 
 /***************************************************************************************************/
-// SISCircularBuff.h
+// TPPCircularBuff.h
 //  A cicular buffer used by SIS to hold a set sensor trips and events.
 //
 //  Use of this software is subject to the Terms of Use which can be found at:

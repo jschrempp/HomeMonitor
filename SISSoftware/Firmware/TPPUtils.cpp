@@ -1,5 +1,5 @@
 /***************************************************************************************************/
-// SISUtils.h
+// TPPUtils.h
 //  Routines of general use
 //
 //  Use of this software is subject to the Terms of Use which can be found at:
@@ -9,7 +9,7 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
-#include <SISUtils.h>
+#include <TPPUtils.h>
 #include <SISGlobals.h>
 
 /*************************************** parser() **********************************************/

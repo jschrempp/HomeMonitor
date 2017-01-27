@@ -1,8 +1,8 @@
-#ifndef SISUTILS_H_INCLUDE
-#define SISUTILS_H_INCLUDE
+#ifndef TPPUTILS_H_INCLUDE
+#define TPPUTILS_H_INCLUDE
 
 /***************************************************************************************************/
-// SISUtils.h
+// TPPUtils.h
 //  Routines of general use
 //
 //  Use of this software is subject to the Terms of Use which can be found at:
