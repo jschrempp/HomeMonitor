@@ -842,7 +842,7 @@ int readBuffer(String location)
     int result;
 
     offset = location.toInt();
-    result = readFromBuffer(offset, cloudBuf);
+    result = readSISFromBuffer(offset, cloudBuf);
 
     return result;
 }
@@ -869,7 +869,7 @@ void publishCircularBuffer() {
 
             char localBuf[90];
 
-            readFromBuffer(getNumToPublish(), localBuf);      // read out the latest logged entry into localBuf
+            readSISFromBuffer(getNumToPublish(), localBuf);      // read out the latest logged entry into localBuf
 
             if(sparkPublish("LogEntry", localBuf, 60))     // ... and publish it to the cloud for xteranl logging
             {

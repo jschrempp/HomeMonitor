@@ -33,8 +33,9 @@ String cBufRead(int offset);
 
 // Read the circular buffer at position Offset and return a string in stringPtr
 // that is formatted for human consumption. Returns -1 if the specified Offset
-// is beyong the end of the circular buffer.
+// is beyong the end of the circular buffer. This routine is specific for the
+// format of SIS strings in the circular buffer.
 //    offset is an absolute position in cBuf, not relative to current head/tail
-int readFromBuffer(int offset, char stringPtr[]);
+int readSISFromBuffer(int offset, char stringPtr[]);
 
 #endif // prevent double includes

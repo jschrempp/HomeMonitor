@@ -22,7 +22,7 @@
                          //    INDEX is into sensorName[] for type sensor
                          //          or enum_messageIndex for type advisory
                          //    EPOCTIME is when the entry happened
-                         // see cBufInsert(), cBufRead(), readFromBuffer(), logSensor(), logMessage()
+                         // see cBufInsert(), cBufRead(), readSISFromBuffer(), logSensor(), logMessage()
 
  int head = 0;       	// index of the head of the circular buffer
  int tail = 0;       	// index of the tail of the buffer
@@ -103,9 +103,10 @@ String cBufRead(int offset)
 /****************************************** end of cBufRead() ***************************************/
 
 
-/********************************** readFromBuffer() ******************************************/
-// readFromBuffer(): utility fujction to read from the circular buffer into the
+/********************************** readSISFromBuffer() ******************************************/
+// readSISFromBuffer(): utility fujction to read from the circular buffer into the
 //  character array passed in as stringPtr[].
+//  This routine is specific for the SIS format strings in the circular buffer.
 //  Arguments:
 //      int offset: the offset into the circular buffer to read from. 0 is the latest entry.  The
 //          next to latest entry is 1, etc. back to BUF_LEN -1.
@@ -124,7 +125,7 @@ String cBufRead(int offset)
 //     in cBufInsert? Or have a magic number in the entry so that this routine
 //     can test for the magic number before trying to format the entry.
 
-int readFromBuffer(int offset, char stringPtr[])
+int readSISFromBuffer(int offset, char stringPtr[])
 {
 	int result;     	// the result code to return
     String g_bufferReadout = String("");   // temporary use
@@ -197,4 +198,4 @@ int readFromBuffer(int offset, char stringPtr[])
 
 }
 
-/********************************** end of readFromBuffer() ****************************************/
+/********************************** end of readSISFromBuffer() ****************************************/
