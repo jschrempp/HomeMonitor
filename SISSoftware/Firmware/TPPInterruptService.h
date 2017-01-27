@@ -1,8 +1,9 @@
-#ifndef SISINTERRUPTSERVICE_H_INCLUDE
-#define SISINTERRUPTSERVICE_H_INCLUDE
+#ifndef TPPINTERRUPTSERVICE_H_INCLUDE
+#define TPPINTERRUPTSERVICE_H_INCLUDE
 /***************************************************************************************************/
-// SISInterruptService.h
-//  The routines to handle interrupt servicing and decoding of the protocol.
+// TPPInterruptService.h
+//  The routines to handle interrupt servicing and decoding of the PT2262 and EV1527 protocol.
+//  This module supports both 433MHz and 315MHz receivers. 
 //
 //  Call getNewSensorCode() to retrieve a new sensor code. Returns 0 if no code available.
 //

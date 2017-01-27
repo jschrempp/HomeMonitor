@@ -14,7 +14,7 @@
 #include <SISGlobals.h>
 #include <SISConfigStore.h>
 #include <TPPCircularBuff.h>
-#include <SISInterruptService.h>
+#include <TPPInterruptService.h>
 #include <TPPUtils.h>
 
 /***************************************************************************************************/

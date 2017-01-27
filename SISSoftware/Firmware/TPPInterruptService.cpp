@@ -1,6 +1,7 @@
 /***************************************************************************************************/
-// SISInterruptService.cpp
-//  The routines to handle interrupt servicing and decoding of the protocol.
+// TPPInterruptService.cpp
+//  The routines to handle interrupt servicing and decoding of the PT2262 and EV1527 protocol.
+//  This module supports both 433MHz and 315MHz receivers.
 //  Communicates with main code:
 //      codeAvailable - True when a new code is available
 //      receivedSensorCode - The value of the new code
@@ -19,7 +20,7 @@
 //
 //  (c) 2015, 2016, 2017 by Bob Glicksman and Jim Schrempp
 /***************************************************************************************************/
-#include <SISInterruptService.h>
+#include <TPPInterruptService.h>
 #include <SISGlobals.h>
 #include "application.h"
 
