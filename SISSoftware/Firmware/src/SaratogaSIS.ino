@@ -10,7 +10,8 @@
 //#define DEBUG_COMMANDS
 #define photon044                 // when present, enables functions that only work with 0.4.4 or higher
 #define CLOUD_LOG
-
+// XXX blynk
+#include "blynk.h"
 #include <SISGlobals.h>
 #include <SISConfigStore.h>
 #include <TPPCircularBuff.h>
@@ -76,6 +77,10 @@ const byte HOME = 1;    	// person is home
 const byte NOT_HOME = 2;	// person is not home
 
 /************************************* Global Variables ****************************************************/
+// XXX blynk
+char auth[] = "0ac2d3236cc249b282e9d99df086c958";
+#define BLYNK_PIN_CIRBUFLEN V5
+
 
 // Strings to publish data to the cloud
 String sensorCode = String("");
@@ -112,9 +117,27 @@ time_t resetTime;       	// variable to hold the time of last reset
 
 unsigned long upcount = 0L; // sequence number added to the circular buffer log entries
 
+
+
+/**************** BLYNK *****************/
+// This function tells Arduino what to do if there is a Widget
+// which is requesting data for Virtual Pin (5)
+BLYNK_READ(BLYNK_PIN_CIRBUFLEN)
+{
+    int numberToReport = upcount;
+    Blynk.virtualWrite(BLYNK_PIN_CIRBUFLEN, numberToReport); // getCircularBufLen());
+}
+
+/************* BLYNK *****************/
+
+
 /**************************************** setup() ***********************************************/
 void setup()
 {
+
+// XXX blynk
+  Blynk.begin(auth);
+
   // Use D7 LED as a test indicator.  Light it for the time spent in setup()
   pinMode(D7, OUTPUT);
   digitalWrite(D7, HIGH);
@@ -190,6 +213,9 @@ digitalWrite(D7, LOW);
 /**************************************** loop() ***********************************************/
 void loop()
 {
+
+// XXX blynk
+ Blynk.run();
 
   boolean knownCode = false;
   static unsigned long lastTimeSync = millis();  // to resync time with the cloud daily
