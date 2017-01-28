@@ -39,6 +39,7 @@ int getNumToPublish() {
     return g_numToPublish;
 }
 
+
 /******************************************** decrementNumToPublish() *****************************************/
 // decrementNumToPublish(): Called whenever a cBuf entry is published to the cloud
 //  Arguments: none

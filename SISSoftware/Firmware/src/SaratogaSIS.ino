@@ -76,12 +76,6 @@ const byte HOME = 1;    	// person is home
 const byte NOT_HOME = 2;	// person is not home
 
 /************************************* Global Variables ****************************************************/
-const unsigned long ONE_DAY_IN_MILLIS = 86400000L;	// 24*60*60*1000
-time_t resetTime;       	// variable to hold the time of last reset
-
-unsigned long upcount = 0L; // sequence number added to the circular buffer log entries
-
-
 
 // Strings to publish data to the cloud
 String sensorCode = String("");
@@ -111,6 +105,12 @@ boolean lastSensorIsDoor = false;   // for door then PIR detection
 boolean supress = false;	// multiple person suppression flag
 byte personHome = UKN;  // initialize to unknown status
 boolean comatose = false;   // patient is not moving
+
+
+const unsigned long ONE_DAY_IN_MILLIS = 86400000L;	// 24*60*60*1000
+time_t resetTime;       	// variable to hold the time of last reset
+
+unsigned long upcount = 0L; // sequence number added to the circular buffer log entries
 
 /**************************************** setup() ***********************************************/
 void setup()
