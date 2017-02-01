@@ -129,8 +129,10 @@ BLYNK_READ(BLYNK_PIN_CIRBUFLEN)
 }
 
 bool g_blynkNotifyNow = false;
+int g_blynkNotifyCount = 0;
 // call this within main loop
 void Blynk_Notify_EverySoOften() {
+
     static time_t lastNotify = 0;
     time_t now = millis();
 
@@ -138,6 +140,7 @@ void Blynk_Notify_EverySoOften() {
     if (g_blynkNotifyNow) {
         g_blynkNotifyNow = false;
         Blynk.notify("Notify from photon");
+        g_blynkNotifyCount++;
         lastNotify = now;
     }
 
@@ -145,6 +148,7 @@ void Blynk_Notify_EverySoOften() {
 
 int blynkNow(String param) {
     g_blynkNotifyNow = true;
+    return g_blynkNotifyCount;
 }
 
 /************* BLYNK *****************/
