@@ -133,15 +133,13 @@ int g_blynkNotifyCount = 0;
 // call this within main loop
 void Blynk_Notify_EverySoOften() {
 
-    static time_t lastNotify = 0;
     time_t now = millis();
 
-//    if (now - lastNotify > 120000)
     if (g_blynkNotifyNow) {
         g_blynkNotifyNow = false;
-        Blynk.notify("Notify from photon");
+        String msg = "Notify test:" + String(g_blynkNotifyCount,DEC);
+        Blynk.notify(msg);
         g_blynkNotifyCount++;
-        lastNotify = now;
     }
 
 }
