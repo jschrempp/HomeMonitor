@@ -128,6 +128,25 @@ BLYNK_READ(BLYNK_PIN_CIRBUFLEN)
     Blynk.virtualWrite(BLYNK_PIN_CIRBUFLEN, numberToReport); // getCircularBufLen());
 }
 
+bool g_blynkNotifyNow = false;
+// call this within main loop
+void Blynk_Notify_EverySoOften() {
+    static time_t lastNotify = 0;
+    time_t now = millis();
+
+//    if (now - lastNotify > 120000)
+    if (g_blynkNotifyNow) {
+        g_blynkNotifyNow = false;
+        Blynk.notify("Notify from photon");
+        lastNotify = now;
+    }
+
+}
+
+int blynkNow(String param) {
+    g_blynkNotifyNow = true;
+}
+
 /************* BLYNK *****************/
 
 
@@ -193,6 +212,7 @@ void setup()
   Spark.variable("registration", registrationInfo, STRING);
   Spark.function("Register", registrar);
   Spark.variable("cloudDebug", cloudDebug, STRING);
+  Spark.function("blynknow",blynkNow);
 
   // Publish a start up event notification
   Spark.function("publistTestE", publishTestE); // for testing events
@@ -216,6 +236,7 @@ void loop()
 
 // ZZZ blynk
  Blynk.run();
+ Blynk_Notify_EverySoOften();
 
   boolean knownCode = false;
   static unsigned long lastTimeSync = millis();  // to resync time with the cloud daily
