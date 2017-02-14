@@ -197,100 +197,100 @@ void loop()
 
 	if (newSensorCode != 0) // new wireless sensor code received
 	{
-        int i; 	// index into known sensor arrays
+		int i; 	// index into known sensor arrays
 
-        // Test to see if the code is for a known sensor
-        knownCode = false;
-	    for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
-	    {
-            if ( newSensorCode == g_sensor_info[i].activateCode )
-    	    {
-        	    knownCode = true;
-        	    break;
-    	    }
-	     }
+		// Test to see if the code is for a known sensor
+		knownCode = false;
+		for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
+		{
+			if ( newSensorCode == g_sensor_info[i].activateCode )
+			{
+				knownCode = true;
+				break;
+			}
+		}
 
-		 // If code is from a known sensor, filter it
-		 if (knownCode == true)	// registered sensor was tripped
-		 {
-    		unsigned long now;
-    		now = millis();
-    		if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
-    		{
-        		// Code for the sensor trip message
-        		mg_sensorCode = "Received sensor code: ";
-        		mg_sensorCode += newSensorCode;
-        		mg_sensorCode += " for ";
-        		mg_sensorCode += g_sensor_info[i].sensorName;
+		// If code is from a known sensor, filter it
+		if (knownCode == true)	// registered sensor was tripped
+		{
+			unsigned long now;
+			now = millis();
+			if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
+			{
+				// Code for the sensor trip message
+				mg_sensorCode = "Received sensor code: ";
+				mg_sensorCode += newSensorCode;
+				mg_sensorCode += " for ";
+				mg_sensorCode += g_sensor_info[i].sensorName;
 
 #ifdef DEBUG
-            	Serial.println(mg_sensorCode);  // USB print for debugging
+				Serial.println(mg_sensorCode);  // USB print for debugging
 #endif
 
 #ifdef DEBUG_EVENT
-            	debug = "Event: ";
-            	debug += g_sensor_info[i].sensorName;
-            	publishDebugRecord(debug);
+				debug = "Event: ";
+				debug += g_sensor_info[i].sensorName;
+				publishDebugRecord(debug);
 #endif
 
-        		mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() + 1 );  // publish to cloud
-        		mg_cloudMsg[mg_sensorCode.length() + 2] = '\0';  // add in the string null terinator
+				mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() + 1 );  // publish to cloud
+				mg_cloudMsg[mg_sensorCode.length() + 2] = '\0';  // add in the string null terinator
 
 
 #if SEND_EVENTS_TO_WEBPAGE
-          		// send notification of new sensor trip for web page
-          		// This can send events too fast, so it is ifdef'd until
-          		// we get a send queue for publishing
-        		publishEvent(String(i));
+				// send notification of new sensor trip for web page
+				// This can send events too fast, so it is ifdef'd until
+				// we get a send queue for publishing
+				publishEvent(String(i));
 #endif
-        		// determine type of sensor and process accordingly
-            	switch (g_sensor_info[i].sensorType)
-            	{
-                	case ePIR:
-                    	processPIRSensor(i);
-                    	break;
-                	case eExitDoor:
-                    	processDoorSensor(i);
-                    	break;
-                	default:
-                    	processSensor(i);
-                    	break;
-            	}
+				// determine type of sensor and process accordingly
+				switch (g_sensor_info[i].sensorType)
+				{
+					case ePIR:
+					processPIRSensor(i);
+					break;
+					case eExitDoor:
+					processDoorSensor(i);
+					break;
+					default:
+					processSensor(i);
+					break;
+				}
 
-          		if (g_sensor_info[i].alarmOnTrip) {
+				if (g_sensor_info[i].alarmOnTrip) {
 
-            		sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
+					sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
 
-          		}
+				}
 
-           		// code to blink the D7 LED when a sensor trip is detected
-        		if(blinkReady)
-        		{
-            		blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
-        		}
+				// code to blink the D7 LED when a sensor trip is detected
+				if(blinkReady)
+				{
+					blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
+				}
 
-        		// update the trip time to filter for next trip
-            	g_sensor_info[i].lastTripTime = now;
-      		}
+				// update the trip time to filter for next trip
+				g_sensor_info[i].lastTripTime = now;
+			}
 		}
 		else // not a code from a known sensor -- report without filtering; no entry in circular buffer
 		{
-    		mg_sensorCode = "Received sensor code: ";
-    		mg_sensorCode += newSensorCode;
-    		mg_sensorCode += " for unknown sensor";
-    		Serial.println(mg_sensorCode);  // USB print for debugging
-    		mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() );  // publish to cloud
+			mg_sensorCode = "Received sensor code: ";
+			mg_sensorCode += newSensorCode;
+			mg_sensorCode += " for unknown sensor";
+			Serial.println(mg_sensorCode);  // USB print for debugging
+			mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() );  // publish to cloud
 
 #ifdef DEBUG_EVENT
-        	unsigned long now;
-        	now = millis();
-        	if((now - mg_lastUnregisteredTripTime) > FILTER_TIME_UNREGISTERED) // filter out multiple codes
-        	{
-            	mg_lastUnregisteredTripTime = now;
-            	debug = "Event: Unknown code ";
-            	debug += String(mg_sensorCode);
-            	publishDebugRecord(debug);
-        	}
+			unsigned long now;
+			now = millis();
+			if((now - mg_lastUnregisteredTripTime) > FILTER_TIME_UNREGISTERED) // filter out multiple codes
+			{
+				mg_lastUnregisteredTripTime = now;
+				debug = "Event: Unknown code ";
+				debug += String(mg_sensorCode);
+				publishDebugRecord(debug);
+			}
 #endif
 		}
 
@@ -298,7 +298,7 @@ void loop()
 
 	if(!blinkReady)  // keep the non blocking blink going
 	{
-    	blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
+		blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
 	}
 
 #ifdef TESTRUN
@@ -332,7 +332,7 @@ void loop()
 	}
 
 #ifdef CLOUD_LOG
-    publishCircularBuffer();  // pushes new events to the cloud, if needed
+	publishCircularBuffer();  // pushes new events to the cloud, if needed
 #endif
 
 };
@@ -373,11 +373,11 @@ void logMessage(int messageIndex)
 	sequence += mg_upcount;
 	if (mg_upcount < 9999)  // limit to 4 digits
 	{
-    	mg_upcount ++;
+		mg_upcount ++;
 	}
 	else
 	{
-    	mg_upcount = 0;
+		mg_upcount = 0;
 	}
 
 	// create the log entry
@@ -392,15 +392,15 @@ void logMessage(int messageIndex)
 	// pad out to 20 characters
 	while (logEntry.length() < 22)
 	{
-    	logEntry += "x";
+		logEntry += "x";
 	}
 
 	cBufInsert("" + logEntry);
 
 	#ifdef DEBUG_ADVISORY
-    	mg_debugLogMessage = "Advise: ";
-    	mg_debugLogMessage += String(mc_messages[messageIndex]);
-    	publishDebugRecord(mg_debugLogMessage);
+	mg_debugLogMessage = "Advise: ";
+	mg_debugLogMessage += String(mc_messages[messageIndex]);
+	publishDebugRecord(mg_debugLogMessage);
 	#endif
 
 	return;
@@ -425,11 +425,11 @@ void logSensor(int sensorIndex)
 	sequence += mg_upcount;
 	if (mg_upcount < 9999)  // limit to 4 digits
 	{
-    	mg_upcount ++;
+		mg_upcount ++;
 	}
 	else
 	{
-    	mg_upcount = 0;
+		mg_upcount = 0;
 	}
 
 	// create the sensor index substring
@@ -448,7 +448,7 @@ void logSensor(int sensorIndex)
 	// pad out to 20 characters
 	while (logEntry.length() < 22)
 	{
-    	logEntry += "x";
+		logEntry += "x";
 	}
 
 	cBufInsert("" + logEntry);
@@ -471,45 +471,45 @@ void processPIRSensor(int sensorIndex)
 	//Test if this is the last PIR tripped
 	if( (sensorIndex != mg_lastPIR) && (mg_supress == false))  // then process the PIR as a new PIR trip
 	{
-    	// log the sensor trip
-    	logSensor(sensorIndex);
+		// log the sensor trip
+		logSensor(sensorIndex);
 
-    	//Test for multiple persons
-    	unsigned long elapsedTime = Time.now() - mg_lastPIRTime;
-    	if(elapsedTime < MULTI_TIME) 	// two different PIR within multiple person time period
-    	{
-        	mg_supress = true;    	// Set the suppress flag
+		//Test for multiple persons
+		unsigned long elapsedTime = Time.now() - mg_lastPIRTime;
+		if(elapsedTime < MULTI_TIME) 	// two different PIR within multiple person time period
+		{
+			mg_supress = true;    	// Set the suppress flag
 
-        	// log the suppress message
-        	logMessage(emsgMultiplePersons);
-    	}
+			// log the suppress message
+			logMessage(emsgMultiplePersons);
+		}
 
-    	//Test for Person is home
-    	elapsedTime = Time.now() - mg_lastDoorTime;
-    	if( (elapsedTime < AWAY) && mg_personHome != mc_HOME) 	// less than 10 minutes since door trip
-    	{
-        	mg_personHome = mc_HOME;    	// Set the mg_personHome state
+		//Test for Person is home
+		elapsedTime = Time.now() - mg_lastDoorTime;
+		if( (elapsedTime < AWAY) && mg_personHome != mc_HOME) 	// less than 10 minutes since door trip
+		{
+			mg_personHome = mc_HOME;    	// Set the mg_personHome state
 
-        	// log the person is home message
-        	logMessage(emsgPersonIsHome);
-    	}
+			// log the person is home message
+			logMessage(emsgPersonIsHome);
+		}
 
-    	mg_lastPIR = sensorIndex;  // update what is the last PIR to trip
-    	mg_comatose = false;   // any PIR resets mg_comatose flag
+		mg_lastPIR = sensorIndex;  // update what is the last PIR to trip
+		mg_comatose = false;   // any PIR resets mg_comatose flag
 	}
 
 	// log the PIR trip if the person was comatose (no movement)
 	if(mg_comatose && (sensorIndex == mg_lastPIR)) // log the sensor trip if the person was comatose
 	{
-    	logSensor(sensorIndex);
-    	mg_comatose = false;   // any PIR resets mg_comatose flag
+		logSensor(sensorIndex);
+		mg_comatose = false;   // any PIR resets mg_comatose flag
 	}
 
-    // any PIR trip indicates that person is moving
-    mg_lastPIRTime = Time.now();
+	// any PIR trip indicates that person is moving
+	mg_lastPIRTime = Time.now();
 
-    // update globals for PIR trip detection
-    mg_lastSensorIsDoor = false;
+	// update globals for PIR trip detection
+	mg_lastSensorIsDoor = false;
 
 	mg_personHome = mc_HOME;  // if a PIR trips, someone is home, regardless (but don't log a message)
 	return;
@@ -551,7 +551,7 @@ void processDoorSensor(int sensorIndex)
 void processSensor(int sensorIndex)
 {
 
-    logSensor(sensorIndex);
+	logSensor(sensorIndex);
 
 	return;
 
@@ -616,11 +616,11 @@ void publishConfig()
 
 int registrar(String action)
 {
-	#ifdef DEBUG_COMMANDS
-	  	mg_debugLogMessage = "Cmd: ";
-	  	mg_debugLogMessage += String(action);
-	  	publishDebugRecord(mg_debugLogMessage);
-	#endif
+#ifdef DEBUG_COMMANDS
+	mg_debugLogMessage = "Cmd: ";
+	mg_debugLogMessage += String(action);
+	publishDebugRecord(mg_debugLogMessage);
+#endif
 
 	// requested actions
 	const int READ = 0; 	// action is "read"
@@ -629,75 +629,75 @@ int registrar(String action)
 	const int OFFSET = 3;   // action is to set the local utc offset
 	const int DST = 4;  	// action is to set the local observe DST (yes or no)
 	const int STORE = 5;	// action is to store the sensor configuration to non-volatile memory
-    const int LOAD = 6;     // action is to restore the config from non-volatile memory
+	const int LOAD = 6;     // action is to restore the config from non-volatile memory
 	const int UKN = -1; 	// action is unknown
 
 	int requestedAction;
 	int numSubstrings;
 	String registrationInformation; 	// String to hold the information about the sensor
-//	unsigned long sensorCode;       	// numerical value of the sensor trip code
+	//	unsigned long sensorCode;       	// numerical value of the sensor trip code
 	int location;                   	// numerical value of ordinal number of the sensor info
 
 	// parse the string argument into its substrings
-    // parse results are in g_dest[]
+	// parse results are in g_dest[]
 	numSubstrings = parser(action);
 
 	if(numSubstrings < 1) //  invalid command string
 	{
-    	return -1;
+		return -1;
 	}
 
 	// determine the command in g_dest[0]
 	if(g_dest[0] == "read")
 	{
-    	requestedAction = READ;
+		requestedAction = READ;
 	}
 	else
 	{
-    	if(g_dest[0] == "delete")
-    	{
-        	requestedAction = DELETE;
-    	}
-    	else
-    	{
-        	if(g_dest[0] == "register")
-        	{
-            	requestedAction = REG;
-        	}
-        	else
-        	{
-            	if(g_dest[0] == "offset")
-            	{
-                	requestedAction = OFFSET;
-            	}
-            	else
-            	{
-                	if(g_dest[0] == "DST")
-                	{
-                    	requestedAction = DST;
-                	}
-                	else
-                	{
-                    	if(g_dest[0] == "store")
-                    	{
-                        	requestedAction = STORE;
-                    	}
-                        else
-                        {
-                             if(g_dest[0] == "load")
-                            {
-                                requestedAction = LOAD;
-                            }
-                        	else
-                        	{
-                            	requestedAction = UKN;
-                        	}
-                        }
-                	}
+		if(g_dest[0] == "delete")
+		{
+			requestedAction = DELETE;
+		}
+		else
+		{
+			if(g_dest[0] == "register")
+			{
+				requestedAction = REG;
+			}
+			else
+			{
+				if(g_dest[0] == "offset")
+				{
+					requestedAction = OFFSET;
+				}
+				else
+				{
+					if(g_dest[0] == "DST")
+					{
+						requestedAction = DST;
+					}
+					else
+					{
+						if(g_dest[0] == "store")
+						{
+							requestedAction = STORE;
+						}
+						else
+						{
+							if(g_dest[0] == "load")
+							{
+								requestedAction = LOAD;
+							}
+							else
+							{
+								requestedAction = UKN;
+							}
+						}
+					}
 
-            	}
-        	}
-    	}
+				}
+			}
+		}
 	}
 
 	// obtain the location from g_dest[1]
@@ -708,107 +708,111 @@ int registrar(String action)
 
 	switch(requestedAction)
 	{
-    	case READ:
-        	if(location >= MAX_WIRELESS_SENSORS)
-        	{
-            	location = MAX_WIRELESS_SENSORS - 1; // clamp the location within array bounds
-        	}
+		case READ:
+			if(location >= MAX_WIRELESS_SENSORS)
+			{
+				location = MAX_WIRELESS_SENSORS - 1; // clamp the location within array bounds
+			}
 
-        	// read action
-        	registrationInformation = "loc: ";
-        	registrationInformation += String(location);
-        	registrationInformation += ", sensor code: ";
-        	registrationInformation += g_sensor_info[location].activateCode;
-        	registrationInformation += " is for ";
-        	registrationInformation += g_sensor_info[location].sensorName;
-        	registrationInformation += ", of type ";
-        	registrationInformation += g_sensorType_strings[g_sensor_info[location].sensorType];
-        	registrationInformation += ". Alarm: ";
-        	registrationInformation += g_sensor_info[location].alarmOnTrip;
-        	Serial.println(registrationInformation);
+			// read action
+			registrationInformation = "loc: ";
+			registrationInformation += String(location);
+			registrationInformation += ", sensor code: ";
+			registrationInformation += g_sensor_info[location].activateCode;
+			registrationInformation += " is for ";
+			registrationInformation += g_sensor_info[location].sensorName;
+			registrationInformation += ", of type ";
+			registrationInformation += g_sensorType_strings[g_sensor_info[location].sensorType];
+			registrationInformation += ". Alarm: ";
+			registrationInformation += g_sensor_info[location].alarmOnTrip;
+			Serial.println(registrationInformation);
 
-        	// write to the cloud
-        	registrationInformation.toCharArray(registrationInfo, registrationInformation.length() + 1);
-        	registrationInfo[registrationInformation.length() + 2] = '\0';
+			// write to the cloud
+			registrationInformation.toCharArray(registrationInfo, registrationInformation.length() + 1);
+			registrationInfo[registrationInformation.length() + 2] = '\0';
 
-        	break;
+			break;
 
-    	case DELETE:
-        	if(location >= MAX_WIRELESS_SENSORS)
-        	{
-            	break; // don't delete an invalid location
-        	}
+		case DELETE:
+			if(location >= MAX_WIRELESS_SENSORS)
+			{
+				break; // don't delete an invalid location
+			}
 
-        	// delete action
-            g_sensor_info[location].sensorName = "UNREGISTERED SENSOR";
-            g_sensor_info[location].activateCode = 0L;
-            g_sensor_info[location].sensorType = esensorTypeUnknown;
-            g_sensor_info[location].alarmOnTrip = false;
-        	break;
+			// delete action
+			g_sensor_info[location].sensorName = "UNREGISTERED SENSOR";
+			g_sensor_info[location].activateCode = 0L;
+			g_sensor_info[location].sensorType = esensorTypeUnknown;
+			g_sensor_info[location].alarmOnTrip = false;
+			break;
 
-    	case REG:
-        	if(location >= MAX_WIRELESS_SENSORS)
-        	{
-            	numSubstrings = -1; // return an error code
-            	break; // don't register to an invalid location
-        	}
+		case REG:
+			if(location >= MAX_WIRELESS_SENSORS)
+			{
+				numSubstrings = -1; // return an error code
+				break; // don't register to an invalid location
+			}
 
-        	// ensure that at least 4 substrings were received
-        	if(numSubstrings < 4)
-        	{
-            	numSubstrings = -1; // return an error code
-            	break;
-        	}
+			// ensure that at least 4 substrings were received
+			if(numSubstrings < 4)
+			{
+				numSubstrings = -1; // return an error code
+				break;
+			}
 
-        	// perform the new sensor registration function
-            g_sensor_info[location].sensorName = g_dest[3];
-            g_sensor_info[location].activateCode = g_dest[2].toInt();
+			// perform the new sensor registration function
+			g_sensor_info[location].sensorName = g_dest[3];
+			g_sensor_info[location].activateCode = g_dest[2].toInt();
 
-            /* XXX from old code
-            const int MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
-                                        	//  MAX_WIRELESS_SENSORS are non-PIR sensors
-            const int MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
-            */
-            if (location <= 11) {
-                g_sensor_info[location].sensorType = ePIR;
-            } else if (location <= 19) {
-                g_sensor_info[location].sensorType = eExitDoor;
-            } else {
-                g_sensor_info[location].sensorType = eSeparation;
-            }
+			/* XXX from old code
+			const int MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
+			//  MAX_WIRELESS_SENSORS are non-PIR sensors
+			const int MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
+			*/
+			if (location <= 11)
+			{
+				g_sensor_info[location].sensorType = ePIR;
+			} else if (location <= 19)
+			{
+				g_sensor_info[location].sensorType = eExitDoor;
+			} else
+				{
+					g_sensor_info[location].sensorType = eSeparation;
+				}
 
-            /* XXX from old code
-            const int ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
-            */
-            if (location == 19) {
-                g_sensor_info[location].alarmOnTrip = true;
-            }
+			/* XXX from old code
+			const int ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
+			*/
+			if (location == 19)
+			{
+				g_sensor_info[location].alarmOnTrip = true;
+			}
 
-            // XXX sensor_info[location].sensorType = ;  NEED TO ADD PARAMETER FOR THIS
-            // XXX sensor_info[location].alarmOnTrip = ;    NEED TO ADD PARAMETER FOR THIS
-            break;
+			// XXX sensor_info[location].sensorType = ;  NEED TO ADD PARAMETER FOR THIS
+			// XXX sensor_info[location].alarmOnTrip = ;    NEED TO ADD PARAMETER FOR THIS
+			break;
 
-    	case OFFSET:
-        	g_utcOffset = "" + g_dest[1];
-        	publishConfig();
-        	break;
+		case OFFSET:
+			g_utcOffset = "" + g_dest[1];
+			publishConfig();
+			break;
 
-    	case DST:
-        	g_observeDST = "" + g_dest[1];
-        	publishConfig();
-        	break;
+		case DST:
+			g_observeDST = "" + g_dest[1];
+			publishConfig();
+			break;
 
-    	case STORE:
-        	writeConfig();
-        	break;
+		case STORE:
+			writeConfig();
+			break;
 
-        case LOAD:
-            restoreConfig();
-            break;
+		case LOAD:
+			restoreConfig();
+			break;
 
-    	default:
-            numSubstrings = -1; // return an error code for unknown command
-        	break;
+		default:
+			numSubstrings = -1; // return an error code for unknown command
+			break;
 	}
 
 	return numSubstrings;
@@ -832,13 +836,13 @@ int registrar(String action)
 
 int readBuffer(String location)
 {
-    int offset;
-    int result;
+	int offset;
+	int result;
 
-    offset = location.toInt();
-    result = readSISFromBuffer(offset, mg_cloudBuf);
+	offset = location.toInt();
+	result = readSISFromBuffer(offset, mg_cloudBuf);
 
-    return result;
+	return result;
 }
 
 /*********************************end of readBuffer() *****************************************/
@@ -853,28 +857,28 @@ int readBuffer(String location)
 //
 void publishCircularBuffer() {
 
-    static unsigned long lastPublishTime = 0;
+	static unsigned long lastPublishTime = 0;
 
-    if (getNumToPublish() >= 0 ) {
+	if (getNumToPublish() >= 0 ) {
 
-        unsigned long currentTime = millis();
-        if (currentTime - lastPublishTime > 4000)
-        {
+		unsigned long currentTime = millis();
+		if (currentTime - lastPublishTime > 4000)
+		{
 
-            char localBuf[90];
+			char localBuf[90];
 
-            readSISFromBuffer(getNumToPublish(), localBuf);      // read out the latest logged entry into localBuf
+			readSISFromBuffer(getNumToPublish(), localBuf);      // read out the latest logged entry into localBuf
 
-            if(sparkPublish("LogEntry", localBuf, 60))     // ... and publish it to the cloud for xteranl logging
-            {
-                decrementNumToPublish();
+			if(sparkPublish("LogEntry", localBuf, 60))     // ... and publish it to the cloud for xteranl logging
+			{
+				decrementNumToPublish();
 
-            };
-            lastPublishTime = currentTime;
+			};
+			lastPublishTime = currentTime;
 
-        }
+		}
 
-    }
+	}
 
 }
 
@@ -942,29 +946,29 @@ int sparkPublish (String eventName, String msg, int ttl)
 	if (millis() > 5000 )  // don't publish until spark has a chance to settle down
 	{
 #ifdef photon044
-        success = Spark.publish(eventName, msg, ttl, PRIVATE);
+		success = Spark.publish(eventName, msg, ttl, PRIVATE);
 #endif
 
 #ifndef photon044
-      //  A return code from spark.publish is only supported on photo 0.4.4 and later
-      Spark.publish(eventName, msg, ttl, PRIVATE);
+		//  A return code from spark.publish is only supported on photo 0.4.4 and later
+		Spark.publish(eventName, msg, ttl, PRIVATE);
 #endif
 	}
 
 
 #ifdef DEBUG
-    Serial.println("sparkPublish called");
+	Serial.println("sparkPublish called");
 
-    if (success == false)
-    {
-      String message = "Spark.publish failed";
-      Serial.print(message);
+	if (success == false)
+	{
+		String message = "Spark.publish failed";
+		Serial.print(message);
 
-      message = " trying to publish " + eventName + ": " + msg;
+		message = " trying to publish " + eventName + ": " + msg;
 
-      Serial.println(message);
-      Spark.process();
-    }
+		Serial.println(message);
+		Spark.process();
+	}
 
 #endif
 
@@ -986,39 +990,39 @@ void reportFatalError(int errorNum)
 {
 
 #ifdef DEBUG
-    String message = "unknown error code";
-    Serial.print("Fatal Error: ");
-    switch(errorNum)
-    {
-    	case 3:
-      		message = " could not sync time to internet";
-			break;
-    	default:
-			break;
-    }
-    Serial.println(message);
-    Spark.process();
+	String message = "unknown error code";
+	Serial.print("Fatal Error: ");
+	switch(errorNum)
+	{
+		case 3:
+		message = " could not sync time to internet";
+		break;
+		default:
+		break;
+	}
+	Serial.println(message);
+	Spark.process();
 #endif
 
 	while(true)  // never ending loop
 	{
-    	for (int i=0; i < errorNum; i++)
-    	{
-      		digitalWrite(D7, HIGH);
-      		delay(100);
-      		Spark.process();
-      		digitalWrite(D7, LOW);
-      		delay(100);
-      		Spark.process();
-    	}
-    	digitalWrite(D7, LOW);
+		for (int i=0; i < errorNum; i++)
+		{
+			digitalWrite(D7, HIGH);
+			delay(100);
+			Spark.process();
+			digitalWrite(D7, LOW);
+			delay(100);
+			Spark.process();
+		}
+		digitalWrite(D7, LOW);
 
-    	// Now LED off for 1500 milliseconds
-    	for (int i=0; i < 3; i++)
-    	{
-      		delay(500);
-      		Spark.process();
-    	}
+		// Now LED off for 1500 milliseconds
+		for (int i=0; i < 3; i++)
+		{
+			delay(500);
+			Spark.process();
+		}
 	}
 
 	// we will never get here.
