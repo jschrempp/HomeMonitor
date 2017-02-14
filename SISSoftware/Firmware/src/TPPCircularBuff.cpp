@@ -174,7 +174,7 @@ int readSISFromBuffer(int offset, char stringPtr[])
 
         	// format the sensor Name from the index
         	index = g_dest[2].toInt();
-            g_bufferReadout += sensor_info[index].sensorName;
+            g_bufferReadout += g_sensor_info[index].sensorName;
             g_bufferReadout += " tripped at ";
     	}
     	else    	// advisory type message
@@ -194,7 +194,7 @@ int readSISFromBuffer(int offset, char stringPtr[])
 	}
 
     g_bufferReadout.toCharArray(stringPtr, g_bufferReadout.length() + 1 );
-	stringPtr[g_bufferReadout.length() + 2] = '\0';
+  	stringPtr[g_bufferReadout.length() + 2] = '\0';
 
 	return result;
 

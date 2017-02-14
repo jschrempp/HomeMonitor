@@ -31,11 +31,11 @@ const int MAX_WIRELESS_SENSORS = 20;
 const int BUF_LEN = 100;     	// circular buffer size. Too big and you run out of RAM.
 
 // this variable is exposed to the cloud
-extern char cloudDebug[];    // used when debugging to give the debug client a message
+extern char g_cloudDebug[];    // used when debugging to give the debug client a message
 
 // constants for SIS operation. Will be stored/retrieved from eeprom
-extern String utcOffset;    // PST is -8
-extern String observeDST;	// no" if locale does not observe DST
+extern String g_utcOffset;    // PST is -8
+extern String g_observeDST;	// no" if locale does not observe DST
 
 // Types of sensors the system supports
 enum enum_sensorType {
@@ -46,7 +46,7 @@ enum enum_sensorType {
 };
 
 // Stings that map to enum_sensorType to provide human readable descriptions
-extern String sensorType_strings[];
+extern String g_sensorType_strings[];
 
 // Information about a sensor configured in the system
 struct type_sensor {
@@ -59,7 +59,7 @@ struct type_sensor {
 };
 
 // Holds information about EVERY sensor configured in the system
-extern type_sensor sensor_info[];
+extern type_sensor g_sensor_info[];
 
 
 #endif //prevent double includes

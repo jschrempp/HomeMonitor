@@ -169,7 +169,7 @@ void setup()
   Spark.variable("circularBuff", cloudBuf, STRING);
   Spark.variable("registration", registrationInfo, STRING);
   Spark.function("Register", registrar);
-  Spark.variable("cloudDebug", cloudDebug, STRING);
+  Spark.variable("cloudDebug", g_cloudDebug, STRING);
 
   // Publish a start up event notification
   Spark.function("publistTestE", publishTestE); // for testing events
@@ -206,7 +206,7 @@ void loop()
 	knownCode = false;
 	for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
-    	if ( newSensorCode == sensor_info[i].activateCode )
+    	if ( newSensorCode == g_sensor_info[i].activateCode )
     	{
         	knownCode = true;
         	break;
@@ -218,13 +218,13 @@ void loop()
 	{
     	unsigned long now;
     	now = millis();
-    	if( (now - sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
+    	if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
     	{
         	// Code for the sensor trip message
         	sensorCode = "Received sensor code: ";
         	sensorCode += newSensorCode;
         	sensorCode += " for ";
-        	sensorCode += sensor_info[i].sensorName;
+        	sensorCode += g_sensor_info[i].sensorName;
 
         	#ifdef DEBUG
             	Serial.println(sensorCode);  // USB print for debugging
@@ -232,7 +232,7 @@ void loop()
 
         	#ifdef DEBUG_EVENT
             	debug = "Event: ";
-            	debug += sensor_info[i].sensorName;
+            	debug += g_sensor_info[i].sensorName;
             	publishDebugRecord(debug);
         	#endif
 
@@ -247,13 +247,13 @@ void loop()
         	publishEvent(String(i));
 #endif
         	// determine type of sensor and process accordingly
-        	if (sensor_info[i].sensorType == ePIR)
+        	if (g_sensor_info[i].sensorType == ePIR)
         	{
             	processPIRSensor(i);
         	}
         	else                	// not a PIR, then a door sensor
         	{
-            if (sensor_info[i].sensorType == eExitDoor)
+            if (g_sensor_info[i].sensorType == eExitDoor)
             {
             	processDoorSensor(i);
         	  }
@@ -263,7 +263,7 @@ void loop()
             }
           }
 
-          if (sensor_info[i].alarmOnTrip) {
+          if (g_sensor_info[i].alarmOnTrip) {
 
             sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
 
@@ -276,7 +276,7 @@ void loop()
         	}
 
         	// update the trip time to filter for next trip
-            sensor_info[i].lastTripTime = now;
+            g_sensor_info[i].lastTripTime = now;
       	}
 	}
 	else // not a code from a known sensor -- report without filtering; no entry in circular buffer
@@ -578,9 +578,9 @@ void publishConfig()
   localConfig += ", version: ";
   localConfig += VERSION;
   localConfig += ", utcOffset: ";
-  localConfig += utcOffset;
+  localConfig += g_utcOffset;
   localConfig += ", DSTyn: ";
-  localConfig += observeDST;
+  localConfig += g_observeDST;
   localConfig += ", resetAt: ";
   localConfig += String(resetTime);
   localConfig += "Z ";
@@ -724,13 +724,13 @@ int registrar(String action)
         	registrationInformation = "loc: ";
         	registrationInformation += String(location);
         	registrationInformation += ", sensor code: ";
-        	registrationInformation += sensor_info[location].activateCode;
+        	registrationInformation += g_sensor_info[location].activateCode;
         	registrationInformation += " is for ";
-        	registrationInformation += sensor_info[location].sensorName;
+        	registrationInformation += g_sensor_info[location].sensorName;
         	registrationInformation += ", of type ";
-        	registrationInformation += sensorType_strings[sensor_info[location].sensorType];
+        	registrationInformation += g_sensorType_strings[g_sensor_info[location].sensorType];
         	registrationInformation += ". Alarm: ";
-        	registrationInformation += sensor_info[location].alarmOnTrip;
+        	registrationInformation += g_sensor_info[location].alarmOnTrip;
         	Serial.println(registrationInformation);
 
         	// write to the cloud
@@ -746,10 +746,10 @@ int registrar(String action)
         	}
 
         	// delete action
-            sensor_info[location].sensorName = "UNREGISTERED SENSOR";
-            sensor_info[location].activateCode = 0L;
-            sensor_info[location].sensorType = esensorTypeUnknown;
-            sensor_info[location].alarmOnTrip = false;
+            g_sensor_info[location].sensorName = "UNREGISTERED SENSOR";
+            g_sensor_info[location].activateCode = 0L;
+            g_sensor_info[location].sensorType = esensorTypeUnknown;
+            g_sensor_info[location].alarmOnTrip = false;
         	break;
 
     	case REG:
@@ -767,8 +767,8 @@ int registrar(String action)
         	}
 
         	// perform the new sensor registration function
-            sensor_info[location].sensorName = g_dest[3];
-            sensor_info[location].activateCode = g_dest[2].toInt();
+            g_sensor_info[location].sensorName = g_dest[3];
+            g_sensor_info[location].activateCode = g_dest[2].toInt();
 
             /* XXX from old code
             const int MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
@@ -776,18 +776,18 @@ int registrar(String action)
             const int MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
             */
             if (location <= 11) {
-                sensor_info[location].sensorType = ePIR;
+                g_sensor_info[location].sensorType = ePIR;
             } else if (location <= 19) {
-                sensor_info[location].sensorType = eExitDoor;
+                g_sensor_info[location].sensorType = eExitDoor;
             } else {
-                sensor_info[location].sensorType = eSeparation;
+                g_sensor_info[location].sensorType = eSeparation;
             }
 
             /* XXX from old code
             const int ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
             */
             if (location == 19) {
-                sensor_info[location].alarmOnTrip = true;
+                g_sensor_info[location].alarmOnTrip = true;
             }
 
             // XXX sensor_info[location].sensorType = ;  NEED TO ADD PARAMETER FOR THIS
@@ -795,12 +795,12 @@ int registrar(String action)
             break;
 
     	case OFFSET:
-        	utcOffset = "" + g_dest[1];
+        	g_utcOffset = "" + g_dest[1];
         	publishConfig();
         	break;
 
     	case DST:
-        	observeDST = "" + g_dest[1];
+        	g_observeDST = "" + g_dest[1];
         	publishConfig();
         	break;
 

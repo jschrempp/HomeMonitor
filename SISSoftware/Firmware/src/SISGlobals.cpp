@@ -18,14 +18,14 @@
 String g_dest[MAX_SUBSTRINGS];
 
 // this variable is exposed to the cloud
-char cloudDebug[80];    // used when debugging to give the debug client a message
+char g_cloudDebug[80];    // used when debugging to give the debug client a message
 
 // SIS config data. This info is stored/retrieved from non-volatile memory
-String utcOffset = "-8.0";	// Pacific Standard Time
-String observeDST = "yes";	// no" if locale does not observe DST
+String g_utcOffset = "-8.0";	// Pacific Standard Time
+String g_observeDST = "yes";	// no" if locale does not observe DST
 
 // Stings that map to enum_sensorType to provide human readable descriptions
-String sensorType_strings[] {
+String g_sensorType_strings[] {
     "Unknown",
     "PIR",
     "Separation",
@@ -33,4 +33,4 @@ String sensorType_strings[] {
 };
 
 // Holds information about EVERY sensor configured in the system
-type_sensor sensor_info[MAX_WIRELESS_SENSORS];
+type_sensor g_sensor_info[MAX_WIRELESS_SENSORS];
