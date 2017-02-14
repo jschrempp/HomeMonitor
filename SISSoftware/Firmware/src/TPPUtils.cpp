@@ -35,13 +35,13 @@ int parser(String source)
 	int index = 0;
 	do
 	{
-    	presentComma = source.indexOf(',', lastComma);
-    	if(presentComma == -1)
-    	{
-        	presentComma = source.length();
-    	}
-      g_dest[index++] = "" + source.substring(lastComma, presentComma);
-    	lastComma = presentComma + 1;
+		presentComma = source.indexOf(',', lastComma);
+		if(presentComma == -1)
+		{
+			presentComma = source.length();
+		}
+		g_dest[index++] = "" + source.substring(lastComma, presentComma);
+		lastComma = presentComma + 1;
 
 	} while( (lastComma < source.length() ) && (index < MAX_SUBSTRINGS) );
 
@@ -77,52 +77,52 @@ boolean nbBlink(byte numBlinks, unsigned long blinkTime)
 
 	switch(state)
 	{
-    	case(READY):
-        	digitalWrite(D7, HIGH); 	// turn the LED on
-        	state = LED_ON;
-        	lastTime = newTime;
-        	blinks = numBlinks;
-        	break;
+		case READY:
+			digitalWrite(D7, HIGH); 	// turn the LED on
+			state = LED_ON;
+			lastTime = newTime;
+			blinks = numBlinks;
+			break;
 
-    	case(LED_ON):
-        	if( (newTime - lastTime) >= blinkTime) // time has expired
-        	{
-            	state = LED_OFF;
-            	lastTime = newTime;
-        	}
-        	break;
+		case LED_ON:
+			if( (newTime - lastTime) >= blinkTime) // time has expired
+			{
+				state = LED_OFF;
+				lastTime = newTime;
+			}
+			break;
 
-    	case(LED_OFF):
-        	digitalWrite(D7, LOW);  	// turn the LED off
-        	if( (newTime - lastTime) >= blinkTime)
-        	{
-            	if(--blinks > 0) 	// another blink set is needed
-            	{
-                	digitalWrite(D7, HIGH);
-                	state = LED_ON;
-                	lastTime = newTime;
-            	}
-            	else
-            	{
-                	state = READY;
-            	}
+		case LED_OFF:
+			digitalWrite(D7, LOW);  	// turn the LED off
+			if( (newTime - lastTime) >= blinkTime)
+			{
+				if(--blinks > 0) 	// another blink set is needed
+				{
+					digitalWrite(D7, HIGH);
+					state = LED_ON;
+					lastTime = newTime;
+				}
+				else
+				{
+					state = READY;
+				}
 
-        	}
-        	break;
+			}
+			break;
 
-    	default:
-        	digitalWrite(D7, LOW);
-        	state = READY;
-
+		default:
+			digitalWrite(D7, LOW);
+			state = READY;
+			break;
 	}
 
 	if(state == READY)
 	{
-    	return true;
+		return true;
 	}
 	else
 	{
-    	return false;
+		return false;
 	}
 }
 
