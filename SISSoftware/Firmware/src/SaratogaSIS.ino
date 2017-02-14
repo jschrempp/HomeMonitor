@@ -65,52 +65,52 @@ typedef enum  enum_messageIndex_type  {                    // used to select the
     emsgMultiplePersons
 }  ;
 //XXX end new
-const String messages[] = {             	// additional log messages for this application. Use enum_messageIndex to access these.
+const String mc_messages[] = {             	// additional log messages for this application. Use enum_messageIndex to access these.
                         	"No one is home",
                         	"Person is home",
                         	"No movement",
                         	"Multiple persons"
                       	};
-const byte UKN = 0;     	// unknown
-const byte HOME = 1;    	// person is home
-const byte NOT_HOME = 2;	// person is not home
+const byte mc_UKN = 0;     	// unknown
+const byte mc_HOME = 1;    	// person is home
+const byte mc_NOT_HOME = 2;	// person is not home
 
 /************************************* Global Variables ****************************************************/
 
 // Strings to publish data to the cloud
-String sensorCode = String("");
+String mg_sensorCode = String("");
 
 
-char cloudMsg[80];  	// buffer to hold last sensor tripped message
-char cloudBuf[90];  	// buffer to hold message read out from circular buffer
+char mg_cloudMsg[80];  	// buffer to hold last sensor tripped message
+char mg_cloudBuf[90];  	// buffer to hold message read out from circular buffer
 char registrationInfo[80]; // buffer to hold information about registered sensors
 
 
 
-char config[120];    	// buffer to hold local configuration information
-long eventNumber = 0;   // grows monotonically to make each event unique
+char mg_config[120];    	// buffer to hold local configuration information
+long mg_eventNumber = 0;   // grows monotonically to make each event unique
 
 
 #if defined(DEBUG_EVENT) || defined(DEBUG_ADVISORY) || defined(DEBUG_COMMANDS)
 	const unsigned long FILTER_TIME_UNREGISTERED = 5000L; // same as above, but for unregistered sensors
-	unsigned long lastUnregisteredTripTime = 0;
-	String debugLogMessage = String("junk"); // used by define DEBUG sections
+	unsigned long mg_lastUnregisteredTripTime = 0;
+	String mg_debugLogMessage = String("junk"); // used by define DEBUG sections
 #endif
 
 // Additional globals for Saratoga SIS Test
-int lastPIR = -1;   	// last PIR to trip - initialize to invalid value
-time_t lastPIRTime = 0; 	// trip time of the last PIR to trip
-time_t lastDoorTime = 0;	// trip time of the last Door sensor to trip
-boolean lastSensorIsDoor = false;   // for door then PIR detection
-boolean supress = false;	// multiple person suppression flag
-byte personHome = UKN;  // initialize to unknown status
-boolean comatose = false;   // patient is not moving
+int mg_lastPIR = -1;   	// last PIR to trip - initialize to invalid value
+time_t mg_lastPIRTime = 0; 	// trip time of the last PIR to trip
+time_t mg_lastDoorTime = 0;	// trip time of the last Door sensor to trip
+boolean mg_lastSensorIsDoor = false;   // for door then PIR detection
+boolean mg_supress = false;	// multiple person suppression flag
+byte mg_personHome = mc_UKN;  // initialize to unknown status
+boolean mg_comatose = false;   // patient is not moving
 
 
 const unsigned long ONE_DAY_IN_MILLIS = 86400000L;	// 24*60*60*1000
-time_t resetTime;       	// variable to hold the time of last reset
+time_t mg_resetTime;       	// variable to hold the time of last reset
 
-unsigned long upcount = 0L; // sequence number added to the circular buffer log entries
+unsigned long mg_upcount = 0L; // sequence number added to the circular buffer log entries
 
 /**************************************** setup() ***********************************************/
 void setup()
@@ -158,15 +158,15 @@ void setup()
 
   toggleD7LED();
 
-  // Publish local configuration information in config[]
-  resetTime = Time.now();    	// the current time = time of last reset
+  // Publish local configuration information in mg_config[]
+  mg_resetTime = Time.now();    	// the current time = time of last reset
   publishConfig();
 
-  // Make sensorCode and cBufreadout strings available to the cloud
-  Spark.variable("Config", config, STRING);
-  Spark.variable("sensorTrip", cloudMsg, STRING);
+  // Make mg_sensorCode and cBufreadout strings available to the cloud
+  Spark.variable("Config", mg_config, STRING);
+  Spark.variable("sensorTrip", mg_cloudMsg, STRING);
   Spark.function("ReadBuffer", readBuffer);
-  Spark.variable("circularBuff", cloudBuf, STRING);
+  Spark.variable("circularBuff", mg_cloudBuf, STRING);
   Spark.variable("registration", registrationInfo, STRING);
   Spark.function("Register", registrar);
   Spark.variable("cloudDebug", g_cloudDebug, STRING);
@@ -221,13 +221,13 @@ void loop()
     	if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
     	{
         	// Code for the sensor trip message
-        	sensorCode = "Received sensor code: ";
-        	sensorCode += newSensorCode;
-        	sensorCode += " for ";
-        	sensorCode += g_sensor_info[i].sensorName;
+        	mg_sensorCode = "Received sensor code: ";
+        	mg_sensorCode += newSensorCode;
+        	mg_sensorCode += " for ";
+        	mg_sensorCode += g_sensor_info[i].sensorName;
 
         	#ifdef DEBUG
-            	Serial.println(sensorCode);  // USB print for debugging
+            	Serial.println(mg_sensorCode);  // USB print for debugging
         	#endif
 
         	#ifdef DEBUG_EVENT
@@ -236,8 +236,8 @@ void loop()
             	publishDebugRecord(debug);
         	#endif
 
-        	sensorCode.toCharArray(cloudMsg, sensorCode.length() + 1 );  // publish to cloud
-        	cloudMsg[sensorCode.length() + 2] = '\0';  // add in the string null terinator
+        	mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() + 1 );  // publish to cloud
+        	mg_cloudMsg[mg_sensorCode.length() + 2] = '\0';  // add in the string null terinator
 
 
 #if SEND_EVENTS_TO_WEBPAGE
@@ -281,20 +281,20 @@ void loop()
 	}
 	else // not a code from a known sensor -- report without filtering; no entry in circular buffer
 	{
-    	sensorCode = "Received sensor code: ";
-    	sensorCode += newSensorCode;
-    	sensorCode += " for unknown sensor";
-    	Serial.println(sensorCode);  // USB print for debugging
-    	sensorCode.toCharArray(cloudMsg, sensorCode.length() );  // publish to cloud
+    	mg_sensorCode = "Received sensor code: ";
+    	mg_sensorCode += newSensorCode;
+    	mg_sensorCode += " for unknown sensor";
+    	Serial.println(mg_sensorCode);  // USB print for debugging
+    	mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() );  // publish to cloud
 
     	#ifdef DEBUG_EVENT
         	unsigned long now;
         	now = millis();
-        	if((now - lastUnregisteredTripTime) > FILTER_TIME_UNREGISTERED) // filter out multiple codes
+        	if((now - mg_lastUnregisteredTripTime) > FILTER_TIME_UNREGISTERED) // filter out multiple codes
         	{
-            	lastUnregisteredTripTime = now;
+            	mg_lastUnregisteredTripTime = now;
             	debug = "Event: Unknown code ";
-            	debug += String(sensorCode);
+            	debug += String(mg_sensorCode);
             	publishDebugRecord(debug);
         	}
     	#endif
@@ -321,9 +321,9 @@ void loop()
 #endif
 
   // Testing for "person not home"
-  if(lastSensorIsDoor && (personHome == HOME) && ((Time.now() - lastDoorTime) > AWAY))
+  if(mg_lastSensorIsDoor && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastDoorTime) > AWAY))
   {
-	personHome = NOT_HOME;
+	mg_personHome = mc_NOT_HOME;
 
 	// log "person not home" message
 	logMessage(emsgNoOneIsHome);
@@ -331,10 +331,10 @@ void loop()
   }
 
   // Testing for "no movement"
-  if(!lastSensorIsDoor && !comatose && (personHome == HOME) && ((Time.now() - lastPIRTime) > COMATOSE))
+  if(!mg_lastSensorIsDoor && !mg_comatose && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastPIRTime) > COMATOSE))
   {
   	logMessage(emsgNoMovement);
-  	comatose = true;
+  	mg_comatose = true;
   }
 
   #ifdef CLOUD_LOG
@@ -364,7 +364,7 @@ void toggleD7LED(void)
 // logMessage(): function to create a log entry that is an advisory message.
 //
 // Arguments:
-//  messageIndex:  index into the messages[] array of message strings
+//  messageIndex:  index into the mc_messages[] array of message strings
 //
 //XXX I hate to declare this an int when it is actually  enum_messageIndex_type
 //    but I can't find a way to get that to compile.
@@ -376,21 +376,21 @@ void logMessage(int messageIndex)
 
 	// create sequence number substring
 	String sequence = "";
-	sequence += upcount;
-	if (upcount < 9999)  // limit to 4 digits
+	sequence += mg_upcount;
+	if (mg_upcount < 9999)  // limit to 4 digits
 	{
-    	upcount ++;
+    	mg_upcount ++;
 	}
 	else
 	{
-    	upcount = 0;
+    	mg_upcount = 0;
 	}
 
 	// create the log entry
 	String logEntry = "A,";  // advisory type message
 	logEntry += sequence;
 	logEntry += ",";
-	logEntry += messages[messageIndex];
+	logEntry += mc_messages[messageIndex];
 	logEntry += ",";
 	logEntry += timeStamp;
 	logEntry += ",";
@@ -404,9 +404,9 @@ void logMessage(int messageIndex)
 	cBufInsert("" + logEntry);
 
 	#ifdef DEBUG_ADVISORY
-    	debugLogMessage = "Advise: ";
-    	debugLogMessage += String(messages[messageIndex]);
-    	publishDebugRecord(debugLogMessage);
+    	mg_debugLogMessage = "Advise: ";
+    	mg_debugLogMessage += String(mc_messages[messageIndex]);
+    	publishDebugRecord(mg_debugLogMessage);
 	#endif
 
 	return;
@@ -428,14 +428,14 @@ void logSensor(int sensorIndex)
 
 	// create sequence number substring
 	String sequence = "";
-	sequence += upcount;
-	if (upcount < 9999)  // limit to 4 digits
+	sequence += mg_upcount;
+	if (mg_upcount < 9999)  // limit to 4 digits
 	{
-    	upcount ++;
+    	mg_upcount ++;
 	}
 	else
 	{
-    	upcount = 0;
+    	mg_upcount = 0;
 	}
 
 	// create the sensor index substring
@@ -475,49 +475,49 @@ void logSensor(int sensorIndex)
 void processPIRSensor(int sensorIndex)
 {
 	//Test if this is the last PIR tripped
-	if( (sensorIndex != lastPIR) && (supress == false))  // then process the PIR as a new PIR trip
+	if( (sensorIndex != mg_lastPIR) && (mg_supress == false))  // then process the PIR as a new PIR trip
 	{
     	// log the sensor trip
     	logSensor(sensorIndex);
 
     	//Test for multiple persons
-    	unsigned long elapsedTime = Time.now() - lastPIRTime;
+    	unsigned long elapsedTime = Time.now() - mg_lastPIRTime;
     	if(elapsedTime < MULTI_TIME) 	// two different PIR within multiple person time period
     	{
-        	supress = true;    	// Set the suppress flag
+        	mg_supress = true;    	// Set the suppress flag
 
         	// log the suppress message
         	logMessage(emsgMultiplePersons);
     	}
 
     	//Test for Person is home
-    	elapsedTime = Time.now() - lastDoorTime;
-    	if( (elapsedTime < AWAY) && personHome != HOME) 	// less than 10 minutes since door trip
+    	elapsedTime = Time.now() - mg_lastDoorTime;
+    	if( (elapsedTime < AWAY) && mg_personHome != mc_HOME) 	// less than 10 minutes since door trip
     	{
-        	personHome = HOME;    	// Set the personHome state
+        	mg_personHome = mc_HOME;    	// Set the mg_personHome state
 
         	// log the person is home message
         	logMessage(emsgPersonIsHome);
     	}
 
-    	lastPIR = sensorIndex;  // update what is the last PIR to trip
-    	comatose = false;   // any PIR resets comatose flag
+    	mg_lastPIR = sensorIndex;  // update what is the last PIR to trip
+    	mg_comatose = false;   // any PIR resets mg_comatose flag
 	}
 
 	// log the PIR trip if the person was comatose (no movement)
-	if(comatose && (sensorIndex == lastPIR)) // log the sensor trip if the person was comatose
+	if(mg_comatose && (sensorIndex == mg_lastPIR)) // log the sensor trip if the person was comatose
 	{
     	logSensor(sensorIndex);
-    	comatose = false;   // any PIR resets comatose flag
+    	mg_comatose = false;   // any PIR resets mg_comatose flag
 	}
 
     // any PIR trip indicates that person is moving
-    lastPIRTime = Time.now();
+    mg_lastPIRTime = Time.now();
 
     // update globals for PIR trip detection
-    lastSensorIsDoor = false;
+    mg_lastSensorIsDoor = false;
 
-	personHome = HOME;  // if a PIR trips, someone is home, regardless (but don't log a message)
+	mg_personHome = mc_HOME;  // if a PIR trips, someone is home, regardless (but don't log a message)
 	return;
 }
 /***********************************end of processPIRSensor() ****************************************/
@@ -536,10 +536,10 @@ void processDoorSensor(int sensorIndex)
 	logSensor(sensorIndex);
 
 	//Update globals for a PIR trip detection
-	lastDoorTime = Time.now();
-	lastSensorIsDoor = true;
-	supress = false;
-	lastPIR = -1;   // clear out the last PIR when a door is opened.
+	mg_lastDoorTime = Time.now();
+	mg_lastSensorIsDoor = true;
+	mg_supress = false;
+	mg_lastPIR = -1;   // clear out the last PIR when a door is opened.
 
 	return;
 
@@ -582,10 +582,10 @@ void publishConfig()
   localConfig += ", DSTyn: ";
   localConfig += g_observeDST;
   localConfig += ", resetAt: ";
-  localConfig += String(resetTime);
+  localConfig += String(mg_resetTime);
   localConfig += "Z ";
 
-  localConfig.toCharArray(config, localConfig.length() );
+  localConfig.toCharArray(mg_config, localConfig.length() );
 
   return;
 }
@@ -623,9 +623,9 @@ void publishConfig()
 int registrar(String action)
 {
 	#ifdef DEBUG_COMMANDS
-    	debugLogMessage = "Cmd: ";
-    	debugLogMessage += String(action);
-    	publishDebugRecord(debugLogMessage);
+    	mg_debugLogMessage = "Cmd: ";
+    	mg_debugLogMessage += String(action);
+    	publishDebugRecord(mg_debugLogMessage);
 	#endif
 
    // requested actions
@@ -826,7 +826,7 @@ int registrar(String action)
 /************************************* readBuffer() ********************************************/
 // EXPOSED TO THE PARTICLE CLOUD
 // SIS CLIENT CALLS THIS ROUTINE
-// readBuffer(): read the contents of the circular buffer into the global variable "cloudBuf"
+// readBuffer(): read the contents of the circular buffer into the module global variable "mg_cloudBuf"
 //  Arguments:
 //  	String location:  numerical location of the buffer data to read.  The location is relative
 //      	to the latest entry, which is "0".  The next to latest is "1", etc. back to BUF_LEN -1.
@@ -842,7 +842,7 @@ int readBuffer(String location)
     int result;
 
     offset = location.toInt();
-    result = readSISFromBuffer(offset, cloudBuf);
+    result = readSISFromBuffer(offset, mg_cloudBuf);
 
     return result;
 }
@@ -894,11 +894,11 @@ void publishCircularBuffer() {
 
 int publishTestE(String data)
 {
-  eventNumber++;
+  mg_eventNumber++;
 
   // Make it JSON ex: {"eventNum":"1","eventData":"data"}
   String msg = "{";
-  msg += makeNameValuePair("eventNum",String(eventNumber));
+  msg += makeNameValuePair("eventNum",String(mg_eventNumber));
   msg += ",";
   msg += makeNameValuePair("eventData", data);
   msg += "}";
@@ -911,11 +911,11 @@ int publishTestE(String data)
 #if defined(DEBUG_EVENT) || defined(DEBUG_ADVISORY) || defined(DEBUG_COMMANDS)
 int publishDebugRecord(String logData)
 {
-	eventNumber++;
+	mg_eventNumber++;
 
 	// Make it JSON ex: {"eventNum":"1","eventData":"data"}
   	String msg = "{";
-  	msg += makeNameValuePair("num",String(eventNumber));
+  	msg += makeNameValuePair("num",String(mg_eventNumber));
   	msg += ",";
   	msg += makeNameValuePair("info",logData);
   	msg += "}";
@@ -928,11 +928,11 @@ int publishDebugRecord(String logData)
 // data field.
 int publishEvent(String sensorIndex)
 {
-  eventNumber++;
+  mg_eventNumber++;
 
   // Make it JSON ex: {"eventNum":"1","eventData":"data"}
   String msg = "{";
-  msg += makeNameValuePair("eventNum",String(eventNumber));
+  msg += makeNameValuePair("eventNum",String(mg_eventNumber));
   msg += ",";
   msg += makeNameValuePair("sensorLocation",sensorIndex);
   msg += "}";
