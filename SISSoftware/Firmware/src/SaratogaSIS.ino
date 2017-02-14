@@ -48,15 +48,11 @@ const String VERSION = "2.00";   	// current firmware version
 
 /************************************* Global Constants ****************************************************/
 
-const unsigned long FILTER_TIME = 5000L;  // Once a sensor trip has been detected, it requires 5 seconds before a new detection is valid
-
-const byte NUM_BLINKS = 2;  	// number of times to blink the D7 LED when a sensor trip is received
-const unsigned long BLINK_TIME = 300L; // number of milliseconds to turn D7 LED on and off for a blink
-
 // additional global constants for Saratoga SIS Test
 const unsigned long MULTI_TIME = 2ul;   	// 2 second interval to detect multiple persons
 const unsigned long AWAY = 600ul;       	// 10 * 60 = 600; ten minutes for declaring away
 const unsigned long COMATOSE = 3600ul;  	// 60*60 = 3600; 1 hour for for declaring no movement
+
 //XXX new
 typedef enum  enum_messageIndex_type  {                    // used to select the correct message from the string array messages[]
     emsgNoOneIsHome = 0,
@@ -80,16 +76,12 @@ const byte mc_NOT_HOME = 2;	// person is not home
 // Strings to publish data to the cloud
 String mg_sensorCode = String("");
 
-
 char mg_cloudMsg[80];  	// buffer to hold last sensor tripped message
 char mg_cloudBuf[90];  	// buffer to hold message read out from circular buffer
 char registrationInfo[80]; // buffer to hold information about registered sensors
 
-
-
 char mg_config[120];    	// buffer to hold local configuration information
 long mg_eventNumber = 0;   // grows monotonically to make each event unique
-
 
 #if defined(DEBUG_EVENT) || defined(DEBUG_ADVISORY) || defined(DEBUG_COMMANDS)
 	const unsigned long FILTER_TIME_UNREGISTERED = 5000L; // same as above, but for unregistered sensors
@@ -115,69 +107,69 @@ unsigned long mg_upcount = 0L; // sequence number added to the circular buffer l
 /**************************************** setup() ***********************************************/
 void setup()
 {
-  // Use D7 LED as a test indicator.  Light it for the time spent in setup()
-  pinMode(D7, OUTPUT);
-  digitalWrite(D7, HIGH);
+	// Use D7 LED as a test indicator.  Light it for the time spent in setup()
+	pinMode(D7, OUTPUT);
+	digitalWrite(D7, HIGH);
 
-  configStoreInit();
+	configStoreInit();
 
-  toggleD7LED();
+	toggleD7LED();
 
 	// initialize the I2C comunication
-  Wire.setSpeed(CLOCK_SPEED_100KHZ);
-  Wire.stretchClock(false);
-  Wire.begin();
+	Wire.setSpeed(CLOCK_SPEED_100KHZ);
+	Wire.stretchClock(false);
+	Wire.begin();
 
-  toggleD7LED();
+	toggleD7LED();
 
-  #ifdef DEBUG
+	#ifdef DEBUG
 	 Serial.begin(9600);
-  #endif
+	#endif
 
-  initISR();
+	initISR();
 
-  toggleD7LED();
+	toggleD7LED();
 
-  // restore the saved configuration from non-volatile memory
-  restoreConfig();
+	// restore the saved configuration from non-volatile memory
+	restoreConfig();
 
-  toggleD7LED();
+	toggleD7LED();
 
-  // wait for the Core to synchronise time with the Internet
-  while(Time.year() <= 1970 && millis() < 30000)
-  {
-  	delay(100);
-    Spark.process();
-  }
+	// wait for the Core to synchronise time with the Internet
+	while(Time.year() <= 1970 && millis() < 30000)
+	{
+		delay(100);
+        Spark.process();
+	}
 
-  if (Time.year() <= 1970)
-  {
-    reportFatalError(3);
-    //never returns from here
-  }
+	if (Time.year() <= 1970)
+	{
+        reportFatalError(3);
+        //never returns from here
+	}
 
-  toggleD7LED();
+	toggleD7LED();
 
-  // Publish local configuration information in mg_config[]
-  mg_resetTime = Time.now();    	// the current time = time of last reset
-  publishConfig();
+	// Publish local configuration information in mg_config[]
+	mg_resetTime = Time.now();    	// the current time = time of last reset
+	publishConfig();
 
-  // Make mg_sensorCode and cBufreadout strings available to the cloud
-  Spark.variable("Config", mg_config, STRING);
-  Spark.variable("sensorTrip", mg_cloudMsg, STRING);
-  Spark.function("ReadBuffer", readBuffer);
-  Spark.variable("circularBuff", mg_cloudBuf, STRING);
-  Spark.variable("registration", registrationInfo, STRING);
-  Spark.function("Register", registrar);
-  Spark.variable("cloudDebug", g_cloudDebug, STRING);
+	// Make mg_sensorCode and cBufreadout strings available to the cloud
+	Spark.variable("Config", mg_config, STRING);
+	Spark.variable("sensorTrip", mg_cloudMsg, STRING);
+	Spark.function("ReadBuffer", readBuffer);
+	Spark.variable("circularBuff", mg_cloudBuf, STRING);
+	Spark.variable("registration", registrationInfo, STRING);
+	Spark.function("Register", registrar);
+	Spark.variable("cloudDebug", g_cloudDebug, STRING);
 
-  // Publish a start up event notification
-  Spark.function("publistTestE", publishTestE); // for testing events
+	// Publish a start up event notification
+	Spark.function("publistTestE", publishTestE); // for testing events
 
-  toggleD7LED();
+	toggleD7LED();
 
 #ifdef DEBUG
-  Serial.println("End of setup()");
+	Serial.println("End of setup()");
 #endif
 
 // turn off the D7 LED at the end of setup()
@@ -191,103 +183,105 @@ digitalWrite(D7, LOW);
 void loop()
 {
 
-  boolean knownCode = false;
-  static unsigned long lastTimeSync = millis();  // to resync time with the cloud daily
-  static boolean blinkReady = true;  // to know when non-blocking blink is ready to be triggered
+	const unsigned long FILTER_TIME = 5000L;  // Once a sensor trip has been detected, it requires 5 seconds before a new detection is valid
 
-  // Test for received code from a wireless sensor
-  unsigned long newSensorCode = getNewSensorCode();
+	const byte NUM_BLINKS = 2;  	// number of times to blink the D7 LED when a sensor trip is received
+	const unsigned long BLINK_TIME = 300L; // number of milliseconds to turn D7 LED on and off for a blink
 
-  if (newSensorCode != 0) // new wireless sensor code received
-  {
-	int i; 	// index into known sensor arrays
+	boolean knownCode = false;
+	static unsigned long lastTimeSync = millis();  // to resync time with the cloud daily
+	static boolean blinkReady = true;  // to know when non-blocking blink is ready to be triggered
 
-	// Test to see if the code is for a known sensor
-	knownCode = false;
-	for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
+	// Test for received code from a wireless sensor
+	unsigned long newSensorCode = getNewSensorCode();
+
+	if (newSensorCode != 0) // new wireless sensor code received
 	{
-    	if ( newSensorCode == g_sensor_info[i].activateCode )
-    	{
-        	knownCode = true;
-        	break;
-    	}
-	}
+        int i; 	// index into known sensor arrays
 
-	// If code is from a known sensor, filter it
-	if (knownCode == true)	// registered sensor was tripped
-	{
-    	unsigned long now;
-    	now = millis();
-    	if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
-    	{
-        	// Code for the sensor trip message
-        	mg_sensorCode = "Received sensor code: ";
-        	mg_sensorCode += newSensorCode;
-        	mg_sensorCode += " for ";
-        	mg_sensorCode += g_sensor_info[i].sensorName;
+        // Test to see if the code is for a known sensor
+        knownCode = false;
+	    for (i = 0; i < MAX_WIRELESS_SENSORS; i++)
+	    {
+            if ( newSensorCode == g_sensor_info[i].activateCode )
+    	    {
+        	    knownCode = true;
+        	    break;
+    	    }
+	     }
 
-        	#ifdef DEBUG
+		 // If code is from a known sensor, filter it
+		 if (knownCode == true)	// registered sensor was tripped
+		 {
+    		unsigned long now;
+    		now = millis();
+    		if( (now - g_sensor_info[i].lastTripTime) > FILTER_TIME ) // filter out multiple codes
+    		{
+        		// Code for the sensor trip message
+        		mg_sensorCode = "Received sensor code: ";
+        		mg_sensorCode += newSensorCode;
+        		mg_sensorCode += " for ";
+        		mg_sensorCode += g_sensor_info[i].sensorName;
+
+#ifdef DEBUG
             	Serial.println(mg_sensorCode);  // USB print for debugging
-        	#endif
+#endif
 
-        	#ifdef DEBUG_EVENT
+#ifdef DEBUG_EVENT
             	debug = "Event: ";
             	debug += g_sensor_info[i].sensorName;
             	publishDebugRecord(debug);
-        	#endif
+#endif
 
-        	mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() + 1 );  // publish to cloud
-        	mg_cloudMsg[mg_sensorCode.length() + 2] = '\0';  // add in the string null terinator
+        		mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() + 1 );  // publish to cloud
+        		mg_cloudMsg[mg_sensorCode.length() + 2] = '\0';  // add in the string null terinator
 
 
 #if SEND_EVENTS_TO_WEBPAGE
-          // send notification of new sensor trip for web page
-          // This can send events too fast, so it is ifdef'd until
-          // we get a send queue for publishing
-        	publishEvent(String(i));
+          		// send notification of new sensor trip for web page
+          		// This can send events too fast, so it is ifdef'd until
+          		// we get a send queue for publishing
+        		publishEvent(String(i));
 #endif
-        	// determine type of sensor and process accordingly
-        	if (g_sensor_info[i].sensorType == ePIR)
-        	{
-            	processPIRSensor(i);
-        	}
-        	else                	// not a PIR, then a door sensor
-        	{
-            if (g_sensor_info[i].sensorType == eExitDoor)
-            {
-            	processDoorSensor(i);
-        	  }
-            else
-            {
-              processSensor(i);
-            }
-          }
+        		// determine type of sensor and process accordingly
+            	switch (g_sensor_info[i].sensorType)
+            	{
+                	case ePIR:
+                    	processPIRSensor(i);
+                    	break;
+                	case eExitDoor:
+                    	processDoorSensor(i);
+                    	break;
+                	default:
+                    	processSensor(i);
+                    	break;
+            	}
 
-          if (g_sensor_info[i].alarmOnTrip) {
+          		if (g_sensor_info[i].alarmOnTrip) {
 
-            sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
+            		sparkPublish("SISAlarm", "Alarm sensor trip", 60 );
 
-          }
+          		}
 
-           	// code to blink the D7 LED when a sensor trip is detected
-        	if(blinkReady)
-        	{
-            	blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
-        	}
+           		// code to blink the D7 LED when a sensor trip is detected
+        		if(blinkReady)
+        		{
+            		blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
+        		}
 
-        	// update the trip time to filter for next trip
-            g_sensor_info[i].lastTripTime = now;
-      	}
-	}
-	else // not a code from a known sensor -- report without filtering; no entry in circular buffer
-	{
-    	mg_sensorCode = "Received sensor code: ";
-    	mg_sensorCode += newSensorCode;
-    	mg_sensorCode += " for unknown sensor";
-    	Serial.println(mg_sensorCode);  // USB print for debugging
-    	mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() );  // publish to cloud
+        		// update the trip time to filter for next trip
+            	g_sensor_info[i].lastTripTime = now;
+      		}
+		}
+		else // not a code from a known sensor -- report without filtering; no entry in circular buffer
+		{
+    		mg_sensorCode = "Received sensor code: ";
+    		mg_sensorCode += newSensorCode;
+    		mg_sensorCode += " for unknown sensor";
+    		Serial.println(mg_sensorCode);  // USB print for debugging
+    		mg_sensorCode.toCharArray(mg_cloudMsg, mg_sensorCode.length() );  // publish to cloud
 
-    	#ifdef DEBUG_EVENT
+#ifdef DEBUG_EVENT
         	unsigned long now;
         	now = millis();
         	if((now - mg_lastUnregisteredTripTime) > FILTER_TIME_UNREGISTERED) // filter out multiple codes
@@ -297,51 +291,51 @@ void loop()
             	debug += String(mg_sensorCode);
             	publishDebugRecord(debug);
         	}
-    	#endif
-	}
+#endif
+		}
 
-};
+	};
 
-  if(!blinkReady)  // keep the non blocking blink going
+	if(!blinkReady)  // keep the non blocking blink going
 	{
     	blinkReady = nbBlink(NUM_BLINKS, BLINK_TIME);
 	}
 
-  #ifdef TESTRUN
-  	simulateSensor();
-  #endif
-
-#ifdef photon044
-  // resync Time to the cloud once per day
-  if (millis() - lastTimeSync > ONE_DAY_IN_MILLIS)
-  {
- 	  Spark.syncTime();
-	  lastTimeSync = millis();
-  }
+#ifdef TESTRUN
+	simulateSensor();
 #endif
 
-  // Testing for "person not home"
-  if(mg_lastSensorIsDoor && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastDoorTime) > AWAY))
-  {
-	mg_personHome = mc_NOT_HOME;
+#ifdef photon044
+	// resync Time to the cloud once per day
+	if (millis() - lastTimeSync > ONE_DAY_IN_MILLIS)
+	{
+		Spark.syncTime();
+		lastTimeSync = millis();
+	}
+#endif
 
-	// log "person not home" message
-	logMessage(emsgNoOneIsHome);
+	// Testing for "person not home"
+	if(mg_lastSensorIsDoor && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastDoorTime) > AWAY))
+	{
+		mg_personHome = mc_NOT_HOME;
 
-  }
+		// log "person not home" message
+		logMessage(emsgNoOneIsHome);
 
-  // Testing for "no movement"
-  if(!mg_lastSensorIsDoor && !mg_comatose && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastPIRTime) > COMATOSE))
-  {
-  	logMessage(emsgNoMovement);
-  	mg_comatose = true;
-  }
+	}
 
-  #ifdef CLOUD_LOG
+	// Testing for "no movement"
+	if(!mg_lastSensorIsDoor && !mg_comatose && (mg_personHome == mc_HOME) && ((Time.now() - mg_lastPIRTime) > COMATOSE))
+	{
+		logMessage(emsgNoMovement);
+		mg_comatose = true;
+	}
+
+#ifdef CLOUD_LOG
     publishCircularBuffer();  // pushes new events to the cloud, if needed
-  #endif
+#endif
 
-}
+};
 /************************************ end of loop() ********************************************/
 
 /************************************ toggleD7LED() ********************************************/
@@ -350,12 +344,12 @@ void loop()
 //
 void toggleD7LED(void)
 {
-  #ifdef DEBUG_LED
-  digitalWrite(D7, LOW);
-  delay(D7LED_DELAY);
-  digitalWrite(D7, HIGH);
-  delay(D7LED_DELAY);
-  #endif
+#ifdef DEBUG_LED
+	digitalWrite(D7, LOW);
+	delay(D7LED_DELAY);
+	digitalWrite(D7, HIGH);
+	delay(D7LED_DELAY);
+#endif
 }
 
 /************************************ end toggleD7LED loop() ***********************************/
@@ -571,23 +565,23 @@ void processSensor(int sensorIndex)
 
 void publishConfig()
 {
-  String localConfig = "cBufLen: ";
-  localConfig += String(BUF_LEN);
-  localConfig += ", MaxSensors:";
-  localConfig += String(MAX_WIRELESS_SENSORS);
-  localConfig += ", version: ";
-  localConfig += VERSION;
-  localConfig += ", utcOffset: ";
-  localConfig += g_utcOffset;
-  localConfig += ", DSTyn: ";
-  localConfig += g_observeDST;
-  localConfig += ", resetAt: ";
-  localConfig += String(mg_resetTime);
-  localConfig += "Z ";
+	String localConfig = "cBufLen: ";
+	localConfig += String(BUF_LEN);
+	localConfig += ", MaxSensors:";
+	localConfig += String(MAX_WIRELESS_SENSORS);
+	localConfig += ", version: ";
+	localConfig += VERSION;
+	localConfig += ", utcOffset: ";
+	localConfig += g_utcOffset;
+	localConfig += ", DSTyn: ";
+	localConfig += g_observeDST;
+	localConfig += ", resetAt: ";
+	localConfig += String(mg_resetTime);
+	localConfig += "Z ";
 
-  localConfig.toCharArray(mg_config, localConfig.length() );
+	localConfig.toCharArray(mg_config, localConfig.length() );
 
-  return;
+	return;
 }
 /******************************* end of publishConfig() ****************************************/
 
@@ -623,12 +617,12 @@ void publishConfig()
 int registrar(String action)
 {
 	#ifdef DEBUG_COMMANDS
-    	mg_debugLogMessage = "Cmd: ";
-    	mg_debugLogMessage += String(action);
-    	publishDebugRecord(mg_debugLogMessage);
+	  	mg_debugLogMessage = "Cmd: ";
+	  	mg_debugLogMessage += String(action);
+	  	publishDebugRecord(mg_debugLogMessage);
 	#endif
 
-   // requested actions
+	// requested actions
 	const int READ = 0; 	// action is "read"
 	const int DELETE = 1;   // action is "delete"
 	const int REG = 2;  	// action is "register"
@@ -894,16 +888,16 @@ void publishCircularBuffer() {
 
 int publishTestE(String data)
 {
-  mg_eventNumber++;
+	mg_eventNumber++;
 
-  // Make it JSON ex: {"eventNum":"1","eventData":"data"}
-  String msg = "{";
-  msg += makeNameValuePair("eventNum",String(mg_eventNumber));
-  msg += ",";
-  msg += makeNameValuePair("eventData", data);
-  msg += "}";
-  sparkPublish("SISEvent", msg , 60);
-  return 0;
+	// Make it JSON ex: {"eventNum":"1","eventData":"data"}
+	String msg = "{";
+	msg += makeNameValuePair("eventNum",String(mg_eventNumber));
+	msg += ",";
+	msg += makeNameValuePair("eventData", data);
+	msg += "}";
+	sparkPublish("SISEvent", msg , 60);
+	return 0;
 
 }
 
@@ -914,13 +908,13 @@ int publishDebugRecord(String logData)
 	mg_eventNumber++;
 
 	// Make it JSON ex: {"eventNum":"1","eventData":"data"}
-  	String msg = "{";
-  	msg += makeNameValuePair("num",String(mg_eventNumber));
-  	msg += ",";
-  	msg += makeNameValuePair("info",logData);
-  	msg += "}";
+	String msg = "{";
+	msg += makeNameValuePair("num",String(mg_eventNumber));
+	msg += ",";
+	msg += makeNameValuePair("info",logData);
+	msg += "}";
 
-  	sparkPublish("SISLogData", msg, 60);
+	sparkPublish("SISLogData", msg, 60);
 }
 #endif /* publishDebugRecord */
 
@@ -928,33 +922,33 @@ int publishDebugRecord(String logData)
 // data field.
 int publishEvent(String sensorIndex)
 {
-  mg_eventNumber++;
+	mg_eventNumber++;
 
-  // Make it JSON ex: {"eventNum":"1","eventData":"data"}
-  String msg = "{";
-  msg += makeNameValuePair("eventNum",String(mg_eventNumber));
-  msg += ",";
-  msg += makeNameValuePair("sensorLocation",sensorIndex);
-  msg += "}";
+	// Make it JSON ex: {"eventNum":"1","eventData":"data"}
+	String msg = "{";
+	msg += makeNameValuePair("eventNum",String(mg_eventNumber));
+	msg += ",";
+	msg += makeNameValuePair("sensorLocation",sensorIndex);
+	msg += "}";
 
-  sparkPublish("SISEvent", msg, 60);
+	sparkPublish("SISEvent", msg, 60);
 
 }
 
 int sparkPublish (String eventName, String msg, int ttl)
 {
-  bool success = true;
+	bool success = true;
 
 	if (millis() > 5000 )  // don't publish until spark has a chance to settle down
 	{
-    #ifdef photon044
+#ifdef photon044
         success = Spark.publish(eventName, msg, ttl, PRIVATE);
-    #endif
+#endif
 
-    #ifndef photon044
+#ifndef photon044
       //  A return code from spark.publish is only supported on photo 0.4.4 and later
       Spark.publish(eventName, msg, ttl, PRIVATE);
-    #endif
+#endif
 	}
 
 
@@ -974,7 +968,7 @@ int sparkPublish (String eventName, String msg, int ttl)
 
 #endif
 
-  return success;
+	return success;
 
 
 }
@@ -996,39 +990,39 @@ void reportFatalError(int errorNum)
     Serial.print("Fatal Error: ");
     switch(errorNum)
     {
-    case 3:
-      message = " could not sync time to internet";
-      break;
-    default:
-      break;
+    	case 3:
+      		message = " could not sync time to internet";
+			break;
+    	default:
+			break;
     }
     Serial.println(message);
     Spark.process();
 #endif
 
-  while(true)  // never ending loop
-  {
-    for (int i=0; i < errorNum; i++)
-    {
-      digitalWrite(D7, HIGH);
-      delay(100);
-      Spark.process();
-      digitalWrite(D7, LOW);
-      delay(100);
-      Spark.process();
-    }
-    digitalWrite(D7, LOW);
+	while(true)  // never ending loop
+	{
+    	for (int i=0; i < errorNum; i++)
+    	{
+      		digitalWrite(D7, HIGH);
+      		delay(100);
+      		Spark.process();
+      		digitalWrite(D7, LOW);
+      		delay(100);
+      		Spark.process();
+    	}
+    	digitalWrite(D7, LOW);
 
-    // Now LED off for 1500 milliseconds
-    for (int i=0; i < 3; i++)
-    {
-      delay(500);
-      Spark.process();
-    }
-  }
+    	// Now LED off for 1500 milliseconds
+    	for (int i=0; i < 3; i++)
+    	{
+      		delay(500);
+      		Spark.process();
+    	}
+	}
 
-  // we will never get here.
-  return;
+	// we will never get here.
+	return;
 
 }
 
