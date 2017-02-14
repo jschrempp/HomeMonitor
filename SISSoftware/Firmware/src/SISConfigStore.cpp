@@ -71,13 +71,13 @@ void configStoreInit(){
 
 	// initialize EEPROM offsets
 	addr_Version = eepromOffset;
-    addr_utcOffset = eepromOffset +            CONFIG_BUFR;
-    addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
-    addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
-    addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
-    addrConfigExtA = eepromOffset +         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
-    addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+	addr_utcOffset = eepromOffset +            CONFIG_BUFR;
+	addr_dst = eepromOffset +             (2 * CONFIG_BUFR);
+	addrStart_sensorName = eepromOffset + (3 * CONFIG_BUFR);
+	addrStart_activateCode = eepromOffset + ((3 +      MAX_WIRELESS_SENSORS)  * CONFIG_BUFR);
+	addrConfigExtA = eepromOffset +         ((3 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+	addrStart_sensorType = eepromOffset +   ((4 + (2 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
+	addrStart_sensorAlarm = eepromOffset +  ((4 + (3 * MAX_WIRELESS_SENSORS)) * CONFIG_BUFR);
 
 
 }
@@ -120,52 +120,52 @@ void writeConfig()
 	buf[id.length()+1] = '\0'; // terminate string with a null
 	i2cEepromWritePage(0x50, addr_dst, buf, sizeof(buf)); // write to EEPROM
 
-    String ExtensionA = "ExtensionA";
-    ExtensionA.toCharArray(buf,ExtensionA.length()+1);
-    buf[ExtensionA.length()+1] = '\0';
-    i2cEepromWritePage(0x50,addrConfigExtA, buf, sizeof(buf)); // write to EEPROM
+	String ExtensionA = "ExtensionA";
+	ExtensionA.toCharArray(buf,ExtensionA.length()+1);
+	buf[ExtensionA.length()+1] = '\0';
+	i2cEepromWritePage(0x50,addrConfigExtA, buf, sizeof(buf)); // write to EEPROM
 
 	// write the sensor names and trip codes to non volatile memory
 	for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
 	{
-        int addr_entryOffset = i * CONFIG_BUFR;
+		int addr_entryOffset = i * CONFIG_BUFR;
 
-    	temp = g_sensor_info[i].sensorName;
-    	// check to see if name is too long, truncate if it is
-    	if(temp.length() >= (CONFIG_BUFR - 2))
-    	{
-        	temp.substring(0, (CONFIG_BUFR - 2));
-    	}
+		temp = g_sensor_info[i].sensorName;
+		// check to see if name is too long, truncate if it is
+		if(temp.length() >= (CONFIG_BUFR - 2))
+		{
+			temp.substring(0, (CONFIG_BUFR - 2));
+		}
 
-    	// store names
-    	temp.toCharArray(buf, temp.length()+1);
-    	buf[temp.length()+1] = '\0'; // terminate string with a null
-    	addr = addrStart_sensorName + addr_entryOffset; //names address
-    	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+		// store names
+		temp.toCharArray(buf, temp.length()+1);
+		buf[temp.length()+1] = '\0'; // terminate string with a null
+		addr = addrStart_sensorName + addr_entryOffset; //names address
+		i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 
-    	// store trip codes
-    	temp = "";
-    	temp += g_sensor_info[i].activateCode; // String concat does conversion from long
-    	temp.toCharArray(buf, temp.length()+1);
-    	buf[temp.length()+1] = '\0'; // terminate string with a null
-    	addr = addrStart_activateCode + addr_entryOffset; //trip codes address
-    	i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+		// store trip codes
+		temp = "";
+		temp += g_sensor_info[i].activateCode; // String concat does conversion from long
+		temp.toCharArray(buf, temp.length()+1);
+		buf[temp.length()+1] = '\0'; // terminate string with a null
+		addr = addrStart_activateCode + addr_entryOffset; //trip codes address
+		i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 
-        // store sensor type
-        temp = "";
-        temp += g_sensor_info[i].sensorType;  // String concat does conversion from enum
-        temp.toCharArray(buf, temp.length()+1);
-        buf[temp.length()+1] = '\0'; // terminate string with a null
-        addr = addrStart_sensorType + addr_entryOffset; //trip codes address
-        i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+		// store sensor type
+		temp = "";
+		temp += g_sensor_info[i].sensorType;  // String concat does conversion from enum
+		temp.toCharArray(buf, temp.length()+1);
+		buf[temp.length()+1] = '\0'; // terminate string with a null
+		addr = addrStart_sensorType + addr_entryOffset; //trip codes address
+		i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 
-        // store alarm on trip
-        temp = "";
-        temp += g_sensor_info[i].alarmOnTrip; // String concat does conversion from boolean
-        temp.toCharArray(buf, temp.length()+1);
-        buf[temp.length()+1] = '\0'; // terminate string with a null
-        addr = addrStart_sensorAlarm + addr_entryOffset; //trip codes address
-        i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
+		// store alarm on trip
+		temp = "";
+		temp += g_sensor_info[i].alarmOnTrip; // String concat does conversion from boolean
+		temp.toCharArray(buf, temp.length()+1);
+		buf[temp.length()+1] = '\0'; // terminate string with a null
+		addr = addrStart_sensorAlarm + addr_entryOffset; //trip codes address
+		i2cEepromWritePage(0x50, addr, buf, sizeof(buf)); // write to EEPROM
 	}
 
 	return;
@@ -188,7 +188,7 @@ void restoreConfig()
 	String ID = "SIS-2015"; 	// the ID value
 	char buf[CONFIG_BUFR];  	// temporary buffer to write to non-volatile memory
 
-    int addr;
+	int addr;
 
 	// read the ID and return immediately if ID is not correct
 	i2cEepromReadPage(0x50, addr_Version, buf, CONFIG_BUFR);
@@ -200,95 +200,104 @@ void restoreConfig()
 	if(data.equals(ID)) 	// restore the rest of the config
 	{
 
-    	// restore the timezone
-    	i2cEepromReadPage(0x50, addr_utcOffset, buf, CONFIG_BUFR);
+		// restore the timezone
+		i2cEepromReadPage(0x50, addr_utcOffset, buf, CONFIG_BUFR);
 
-    	// make sure that the buffer contains a valid string
-    	buf[31] = '\0';
-    	g_utcOffset = buf;
+		// make sure that the buffer contains a valid string
+		buf[31] = '\0';
+		g_utcOffset = buf;
 
-    	// restore the dst
-    	i2cEepromReadPage(0x50, addr_dst, buf, CONFIG_BUFR);
+		// restore the dst
+		i2cEepromReadPage(0x50, addr_dst, buf, CONFIG_BUFR);
 
-    	// make sure that the buffer contains a valid string
-    	buf[31] = '\0';
-    	g_observeDST = buf;
+		// make sure that the buffer contains a valid string
+		buf[31] = '\0';
+		g_observeDST = buf;
 
-        // does the stored config support extensionA ?
-        i2cEepromReadPage(0x50,addrConfigExtA, buf, CONFIG_BUFR);
-        buf[31] = '\0'; // make sure that the buffer contains a valid string
-        String temp = String(buf);
-        bool bSupportsExtA = false;
-        if (temp.startsWith("ExtensionA")) {
-            bSupportsExtA = true;
-        }
+		// does the stored config support extensionA ?
+		i2cEepromReadPage(0x50,addrConfigExtA, buf, CONFIG_BUFR);
+		buf[31] = '\0'; // make sure that the buffer contains a valid string
+		String temp = String(buf);
+		bool bSupportsExtA = false;
+		if (temp.startsWith("ExtensionA"))
+		{
+			bSupportsExtA = true;
+		}
 
-    	// restore the sensor names and trip codes
-    	for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
-    	{
-            int addr_entryOffset = i * CONFIG_BUFR;
+		// restore the sensor names and trip codes
+		for(int i = 0; i < MAX_WIRELESS_SENSORS; i++)
+		{
+			int addr_entryOffset = i * CONFIG_BUFR;
 
-        	// retrieve names
-        	addr=addrStart_sensorName + addr_entryOffset; //names address
-        	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
-        	buf[31] = '\0'; // make sure that the buffer contains a valid string
-            g_sensor_info[i].sensorName = buf;
+			// retrieve names
+			addr=addrStart_sensorName + addr_entryOffset; //names address
+			i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+			buf[31] = '\0'; // make sure that the buffer contains a valid string
+			g_sensor_info[i].sensorName = buf;
 
-        	// retrieve trip codes
-        	addr=addrStart_activateCode + addr_entryOffset; //trip codes address
-        	i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
-        	buf[31] = '\0'; // make sure that the buffer contains a valid string
-        	String temp = String(buf);
-            g_sensor_info[i].activateCode = temp.toInt();
+			// retrieve trip codes
+			addr=addrStart_activateCode + addr_entryOffset; //trip codes address
+			i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+			buf[31] = '\0'; // make sure that the buffer contains a valid string
+			String temp = String(buf);
+			g_sensor_info[i].activateCode = temp.toInt();
 
-            if (bSupportsExtA) {
-                // retrieve sensor type
-                addr=addrStart_sensorType + addr_entryOffset; //type enum address
-                i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
-                buf[31] = '\0'; // make sure that the buffer contains a valid string
-                temp = String(buf);
-                g_sensor_info[i].sensorType = (enum_sensorType)temp.toInt();
+			if (bSupportsExtA)
+			{
+				// retrieve sensor type
+				addr=addrStart_sensorType + addr_entryOffset; //type enum address
+				i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+				buf[31] = '\0'; // make sure that the buffer contains a valid string
+				temp = String(buf);
+				g_sensor_info[i].sensorType = (enum_sensorType)temp.toInt();
 
-                // retrieve alarm on trip
-        	    addr=addrStart_sensorAlarm + addr_entryOffset; //alarm boolean address
-        	    i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
-        	    buf[31] = '\0'; // make sure that the buffer contains a valid string
-        	    temp = String(buf);
-                g_sensor_info[i].alarmOnTrip = (bool)temp.toInt();
+				// retrieve alarm on trip
+				addr=addrStart_sensorAlarm + addr_entryOffset; //alarm boolean address
+				i2cEepromReadPage(0x50, addr, buf, CONFIG_BUFR);
+				buf[31] = '\0'; // make sure that the buffer contains a valid string
+				temp = String(buf);
+				g_sensor_info[i].alarmOnTrip = (bool)temp.toInt();
 
-            } else {
+			} else
+			{
 
-                // EEPROM store does not have extensionA values
-                // MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
-                                                //  MAX_WIRELESS_SENSORS are non-PIR sensors
-                // MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
-                if (i <= 11) {
-                    g_sensor_info[i].sensorType = ePIR;
-                } else if (i <= 19) {
-                    g_sensor_info[i].sensorType = eExitDoor;
-                } else {
-                    g_sensor_info[i].sensorType = eSeparation;
-                }
+				// EEPROM store does not have extensionA values
+				// MAX_PIR = 11;      	// PIR sensors are registered in loc 0 through MAX_PIR.  Locations MAX_PIR + 1 to
+				//  MAX_WIRELESS_SENSORS are non-PIR sensors
+				// MAX_DOOR = 15;       // Sensors > MAX_PIR and <= MAX_DOOR are assumed to be exit doors.
+				if (i <= 11)
+				{
+					g_sensor_info[i].sensorType = ePIR;
 
-                // ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
-                if (i == 19) {
-                    g_sensor_info[i].alarmOnTrip = true;
-                }
+				} else if (i <= 19)
+					{
+						g_sensor_info[i].sensorType = eExitDoor;
+					} else
+					{
+						g_sensor_info[i].sensorType = eSeparation;
+					}
 
-            }
+				// ALARM_SENSOR = 19;  // When this sensor is tripped, publish an SISAlarm
+				if (i == 19)
+				{
+					g_sensor_info[i].alarmOnTrip = true;
+				}
 
-    	}
+			}
 
-	} else {
-        // Invalid saved config, initialze the config
-        g_utcOffset = "0";
-        g_observeDST = "N";
-        for (int i = 0; i < MAX_WIRELESS_SENSORS; i++) {
-            g_sensor_info[i].sensorName = "Unknown" + String(i);
-            g_sensor_info[i].sensorType = esensorTypeUnknown;
-            g_sensor_info[i].alarmOnTrip = false;
-        }
-    }
+		} // end of for loop
+
+	} else
+	{
+		// Invalid saved config, initialze the config
+		g_utcOffset = "0";
+		g_observeDST = "N";
+		for (int i = 0; i < MAX_WIRELESS_SENSORS; i++) {
+			g_sensor_info[i].sensorName = "Unknown" + String(i);
+			g_sensor_info[i].sensorType = esensorTypeUnknown;
+			g_sensor_info[i].alarmOnTrip = false;
+		}
+	}
 
 	return;
 
@@ -307,14 +316,14 @@ void restoreConfig()
 //
 void i2cEepromWritePage( int deviceAddress, unsigned int eeAddressPage, char* data, byte length )
 {
-    // XXX shouldn't this be 30?
+	// XXX shouldn't this be 30?
 	if(length > 32) return; // make sure you don't blow the I2C library buffer!
 	Wire.beginTransmission(deviceAddress);
 	Wire.write((byte)( (eeAddressPage & 0xFF00) >> 8)); // MSB
 	Wire.write((byte)(eeAddressPage & 0xFF)); // LSB
 	for (byte c = 0; c < length; c++)
 	{
-    	Wire.write(data[c]);
+		Wire.write(data[c]);
 	}
 	Wire.endTransmission();
 	delay(5);   // recommended delay for I2C bus
@@ -344,11 +353,11 @@ void i2cEepromReadPage( int deviceAddress, unsigned int eeAddressPage, char* buf
 	int c = 0;
 	for ( c = 0; c < length; c++ )
 	{
-    	while (!Wire.available())
-    	{
-        	// wait for data to be ready
-    	}
-    	buffer[c] = Wire.read();
+		while (!Wire.available())
+		{
+			// wait for data to be ready
+		}
+		buffer[c] = Wire.read();
 	}
 	delay(5);   // recommended delay for I2C bus
 	return;
