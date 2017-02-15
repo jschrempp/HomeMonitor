@@ -39,10 +39,10 @@ extern String g_observeDST;	// no" if locale does not observe DST
 
 // Types of sensors the system supports
 enum enum_sensorType {
-    esensorTypeUnknown,
-    ePIR,
-    eSeparation,
-    eExitDoor
+	esensorTypeUnknown,
+	ePIR,
+	eSeparation,
+	eExitDoor
 };
 
 // Stings that map to enum_sensorType to provide human readable descriptions
@@ -50,11 +50,11 @@ extern String g_sensorType_strings[];
 
 // Information about a sensor configured in the system
 struct type_sensor {
-    String sensorName = "No Name Assigned";
-    unsigned long activateCode = 0;
-    unsigned long lastTripTime = 0;
-    enum_sensorType sensorType = esensorTypeUnknown;
-    bool alarmOnTrip = 0;
+	String sensorName = "No Name Assigned";
+	unsigned long activateCode = 0;
+	unsigned long lastTripTime = 0;
+	enum_sensorType sensorType = esensorTypeUnknown;
+	bool alarmOnTrip = 0;
 
 };
 

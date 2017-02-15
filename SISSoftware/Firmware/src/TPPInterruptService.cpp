@@ -59,11 +59,11 @@ void decode(unsigned int changeCount);
 // Called once to initialize ISR routines
 void initISR() {
 
-    pinMode(INTERRUPT_315, INPUT);
-    pinMode(INTERRUPT_433, INPUT);
+	pinMode(INTERRUPT_315, INPUT);
+	pinMode(INTERRUPT_433, INPUT);
 
-    attachInterrupt(INTERRUPT_315, isr315, CHANGE);   // 315 MHz receiver on interrupt 3 => that is pin #D3
-    attachInterrupt(INTERRUPT_433, isr433, CHANGE);   // 433 MHz receiver on interrupt 4 => that is pin #D4
+	attachInterrupt(INTERRUPT_315, isr315, CHANGE);   // 315 MHz receiver on interrupt 3 => that is pin #D3
+	attachInterrupt(INTERRUPT_433, isr433, CHANGE);   // 433 MHz receiver on interrupt 4 => that is pin #D4
 
 }
 
@@ -71,16 +71,18 @@ void initISR() {
 // return 0 unless another code has been received.
 unsigned long getNewSensorCode() {
 
-    if (codeAvailable) {
+	if (codeAvailable)
+	{
 
-        codeAvailable = !codeAvailable;
+		codeAvailable = !codeAvailable;
 
-        return receivedSensorCode;
+		return receivedSensorCode;
 
-    } else {
+	} else
+	{
 
-        return 0;
-    }
+		return 0;
+	}
 
 }
 
@@ -89,9 +91,9 @@ unsigned long getNewSensorCode() {
 //This is the interrupt service routine for interrupt 3 (315 MHz receiver)
 void isr315()
 {
-  codeTimes = codeTimes315;	// set pointer to 315 MHz array
-  process315();
-  return;
+	codeTimes = codeTimes315;	// set pointer to 315 MHz array
+	process315();
+	return;
 }
 
 /***********************************end of isr315() ********************************************/
@@ -100,9 +102,9 @@ void isr315()
 //This is the interrupt service routine for interrupt 4 (433 MHz receiver)
 void isr433()
 {
-  codeTimes = codeTimes433;	// set pointer to 433 MHz array
-  process433();
-  return;
+	codeTimes = codeTimes433;	// set pointer to 433 MHz array
+	process433();
+	return;
 }
 
 /***********************************end of isr433() ********************************************/
@@ -113,47 +115,47 @@ void isr433()
 
 void process315()
 {
-    //this is right out of RC-SWITCH
-    static unsigned int duration;
-    static unsigned int changeCount;
-    static unsigned long lastTime = 0L;
-    static unsigned int repeatCount = 0;
+	//this is right out of RC-SWITCH
+	static unsigned int duration;
+	static unsigned int changeCount;
+	static unsigned long lastTime = 0L;
+	static unsigned int repeatCount = 0;
 
-    long time = micros();
-    duration = time - lastTime;
+	long time = micros();
+	duration = time - lastTime;
 
-    if (duration > 5000
-        && duration > codeTimes[0] - 200
-        && duration < codeTimes[0] + 200)
-    {
-        // we found a second sync
-        repeatCount++;
-        changeCount--;
+	if (duration > 5000
+		&& duration > codeTimes[0] - 200
+		&& duration < codeTimes[0] + 200)
+	{
+		// we found a second sync
+		repeatCount++;
+		changeCount--;
 
-	    if (repeatCount == 2)  // two successive code words found
-	    {
-            decode(changeCount); // decode the protocol from the codeTimes array
-            repeatCount = 0;
-        }
-        changeCount = 0; // reset so we're ready to start a new sequence
-    }
-    else if (duration > 5000)
-    {
-        // If the duration is this long, then it could be a sync
-        changeCount = 0;
-    }
+		if (repeatCount == 2)  // two successive code words found
+		{
+			decode(changeCount); // decode the protocol from the codeTimes array
+			repeatCount = 0;
+		}
+		changeCount = 0; // reset so we're ready to start a new sequence
+	}
+	else if (duration > 5000)
+	{
+		// If the duration is this long, then it could be a sync
+		changeCount = 0;
+	}
 
-    if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
-    {
-        // reset, we just had a blast of noise
-        changeCount = 0;
-        repeatCount = 0;
-    }
+	if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
+	{
+		// reset, we just had a blast of noise
+		changeCount = 0;
+		repeatCount = 0;
+	}
 
-    codeTimes[changeCount++] = duration;
-    lastTime = time;
+	codeTimes[changeCount++] = duration;
+	lastTime = time;
 
-    return;
+	return;
 }
 /***********************************end of process315() ********************************************/
 
@@ -162,14 +164,14 @@ void process315()
 
 void process433()
 {
-    //this is right out of RC-SWITCH
-    static unsigned int duration;
-    static unsigned int changeCount;
-    static unsigned long lastTime = 0L;
-    static unsigned int repeatCount = 0;
+	//this is right out of RC-SWITCH
+	static unsigned int duration;
+	static unsigned int changeCount;
+	static unsigned long lastTime = 0L;
+	static unsigned int repeatCount = 0;
 
-    long time = micros();
-    duration = time - lastTime;
+	long time = micros();
+	duration = time - lastTime;
 
 /*
     A pulse for a bit is between 300 and 500 microseconds. A bit always contains either
@@ -205,38 +207,38 @@ void process433()
     Q: Why don't we calculate codeTimes[0]/31 and check that a new duration is
        at that value +/- some tolerance? That would allow us to ignore noise.
  */
-    if (duration > 5000
-        && duration > codeTimes[0] - 200
-        && duration < codeTimes[0] + 200)
-    {
-        // we found a second sync
-        repeatCount++;
-        changeCount--;
+	if (duration > 5000
+		&& duration > codeTimes[0] - 200
+		&& duration < codeTimes[0] + 200)
+	{
+		// we found a second sync
+		repeatCount++;
+		changeCount--;
 
-	    if (repeatCount == 2)  // two successive code words found
-	    {
-            decode(changeCount); // decode the protocol from the codeTimes array
-            repeatCount = 0;
-        }
-        changeCount = 0; // reset so we're ready to start a new sequence
-    }
-    else if (duration > 5000)
-    {
-        // If the duration is this long, then it could be a sync
-        changeCount = 0;
-    }
+		if (repeatCount == 2)  // two successive code words found
+		{
+			decode(changeCount); // decode the protocol from the codeTimes array
+			repeatCount = 0;
+		}
+		changeCount = 0; // reset so we're ready to start a new sequence
+	}
+	else if (duration > 5000)
+	{
+		// If the duration is this long, then it could be a sync
+		changeCount = 0;
+	}
 
-    if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
-    {
-        // reset, we just had a blast of noise
-        changeCount = 0;
-        repeatCount = 0;
-    }
+	if (changeCount >= MAX_CODE_TIMES) // too many bits before sync
+	{
+		// reset, we just had a blast of noise
+		changeCount = 0;
+		repeatCount = 0;
+	}
 
-    codeTimes[changeCount++] = duration;
-    lastTime = time;
+	codeTimes[changeCount++] = duration;
+	lastTime = time;
 
-    return;
+	return;
 }
 /***********************************end of isr433() ********************************************/
 
@@ -250,69 +252,70 @@ void process433()
 void decode(unsigned int changeCount)
 {
 
-    unsigned long code = 0L;
-    unsigned long pulseTime;
-    float pulseTimeThree;
-    unsigned long pulseTolerance;
+	unsigned long code = 0L;
+	unsigned long pulseTime;
+	float pulseTimeThree;
+	unsigned long pulseTolerance;
 
-    pulseTime = codeTimes[0] / 31L;
-    pulseTimeThree = pulseTime * 3;
+	pulseTime = codeTimes[0] / 31L;
+	pulseTimeThree = pulseTime * 3;
 
-    pulseTolerance = pulseTime * TOLERANCE * 0.01;
+	pulseTolerance = pulseTime * TOLERANCE * 0.01;
 
-    for (int i = 1; i < changeCount ; i=i+2)
-    {
+	for (int i = 1; i < changeCount ; i=i+2)
+	{
 
-	    if (codeTimes[i] > pulseTime - pulseTolerance
-            && codeTimes[i] < pulseTime + pulseTolerance
-            && codeTimes[i+1] > pulseTimeThree - pulseTolerance
-            && codeTimes[i+1] < pulseTimeThree + pulseTolerance)
-	    {
-            // we have a 0 shift left one
-            code = code << 1;
+		if (codeTimes[i] > pulseTime - pulseTolerance
+			&& codeTimes[i] < pulseTime + pulseTolerance
+			&& codeTimes[i+1] > pulseTimeThree - pulseTolerance
+			&& codeTimes[i+1] < pulseTimeThree + pulseTolerance)
+		{
+			// we have a 0 shift left one
+			code = code << 1;
 
-	    }
-        else if (codeTimes[i] > pulseTimeThree - pulseTolerance
-                && codeTimes[i] < pulseTimeThree + pulseTolerance
-                && codeTimes[i+1] > pulseTime - pulseTolerance
-                && codeTimes[i+1] < pulseTime + pulseTolerance)
-  	          {
-                  // we have a 1, add one to code
-                  code = code + 1;
-                  // shift left one
-                  code = code << 1;
-  	           }
-               else
-  	            {
-                    // Failed, this sequence of interrupts did not indicate a 1 or 0
-                    // so abort the decoding process.
-                    i = changeCount;
-                    code = 0;
-                }
-    }
-    // in decoding we shift one too many, so shift right one
-    code = code >> 1;
+		}
+		else if (codeTimes[i] > pulseTimeThree - pulseTolerance
+			&& codeTimes[i] < pulseTimeThree + pulseTolerance
+			&& codeTimes[i+1] > pulseTime - pulseTolerance
+			&& codeTimes[i+1] < pulseTime + pulseTolerance)
+		{
+			// we have a 1, add one to code
+			code = code + 1;
+			// shift left one
+			code = code << 1;
+		}
+		else
+		{
+			// Failed, this sequence of interrupts did not indicate a 1 or 0
+			// so abort the decoding process.
+			i = changeCount;
+			code = 0;
+		}
+	}  // end of for loop
 
-    if (changeCount > 6) // ignore < 4bit values as there are no devices sending 4bit values => noise
-    {
-        receivedSensorCode = code;
-        if (code == 0)
-        {
-            codeAvailable = false;
-        }
-        else
-        {
-            codeAvailable = true;
-        }
+	// in decoding we shift one too many, so shift right one
+	code = code >> 1;
 
-    }
-    else	// too short -- noise
-    {
-        codeAvailable = false;
-        receivedSensorCode = 0L;
-    }
+	if (changeCount > 6) // ignore < 4bit values as there are no devices sending 4bit values => noise
+	{
+		receivedSensorCode = code;
+		if (code == 0)
+		{
+			codeAvailable = false;
+		}
+		else
+		{
+			codeAvailable = true;
+		}
 
-    return;
+	}
+	else	// too short -- noise
+	{
+		codeAvailable = false;
+		receivedSensorCode = 0L;
+	}
+
+	return;
 }
 
 /************************************ end of decode() ********************************************/
@@ -326,41 +329,45 @@ void decode(unsigned int changeCount)
 //This routine is called every iteration of the main loop. Based on the current
 //time it decides if a sensor trip should be made.
 void simulateSensor() {
-  struct simulationEvent {
-	unsigned long simTime; 	// time of a fake trip in msec
-	int simPosition;       	// the sensor config position to trip
-  } ;
-  const int SIMULATE_EVENTS_MAX = 5;
-  const simulationEvent simEvents[SIMULATE_EVENTS_MAX] = {
-	{5000, 1},
-	{6000, 2},
-	{20000, 3},
-	{21000, 2},
-	{50000, 2}
-  };
-  static unsigned long simStartTime = 0;
-  static int simLastEventFired = -1;
+	struct simulationEvent
+	{
+		unsigned long simTime; 	// time of a fake trip in msec
+		int simPosition;       	// the sensor config position to trip
+	};
+	const int SIMULATE_EVENTS_MAX = 5;
+	const simulationEvent simEvents[SIMULATE_EVENTS_MAX] =
+	{
+		{5000, 1},
+		{6000, 2},
+		{20000, 3},
+		{21000, 2},
+		{50000, 2}
+	};
+	static unsigned long simStartTime = 0;
+	static int simLastEventFired = -1;
 
-  if (simStartTime == 0) {
-	simStartTime = millis();  // first time through we get the time of the start of the simulation
-  }
-
-  unsigned long simCurrentTime = millis() - simStartTime; // what is the current simulation time?
-
-  int i = simLastEventFired + 1;
-  while (i < SIMULATE_EVENTS_MAX)
-  {   // check each simulation event after the last one we tripped
-
-	if (simCurrentTime > simEvents[i].simTime){  // if we are later in simulation than time of an event, trip it
-
-  	receivedSensorCode = sensor_info[simEvents[i].simPosition].activateCode;  // setting global
-  	codeAvailable = true;   // setting global
-  	simLastEventFired = i;  // next time we will check only after this event
-  	break;              	// only trip the next event
-
+	if (simStartTime == 0)
+	{
+		simStartTime = millis();  // first time through we get the time of the start of the simulation
 	}
-	i++;
-  }
+
+	unsigned long simCurrentTime = millis() - simStartTime; // what is the current simulation time?
+
+	int i = simLastEventFired + 1;
+	while (i < SIMULATE_EVENTS_MAX)
+	{   // check each simulation event after the last one we tripped
+
+		if (simCurrentTime > simEvents[i].simTime)
+		{  // if we are later in simulation than time of an event, trip it
+
+			receivedSensorCode = sensor_info[simEvents[i].simPosition].activateCode;  // setting global
+			codeAvailable = true;   // setting global
+			simLastEventFired = i;  // next time we will check only after this event
+			break;              	// only trip the next event
+
+		}
+		i++;
+	}
 }
 
 #endif  /* TESTRUN */

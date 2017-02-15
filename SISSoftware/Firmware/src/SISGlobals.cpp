@@ -26,10 +26,10 @@ String g_observeDST = "yes";	// no" if locale does not observe DST
 
 // Stings that map to enum_sensorType to provide human readable descriptions
 String g_sensorType_strings[] {
-    "Unknown",
-    "PIR",
-    "Separation",
-    "Exit Door"
+	"Unknown",
+	"PIR",
+	"Separation",
+	"Exit Door"
 };
 
 // Holds information about EVERY sensor configured in the system
