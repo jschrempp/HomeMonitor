@@ -1,5 +1,5 @@
 //#define SEND_EVENTS_TO_WEBPAGE // if on will send the events needed for the
-                                 // config web page to display live events
+								 //config web page to display live events
 //#define TESTRUN
 //#define DEBUG                   // turns on Serial port messages
 #define DEBUG_LED                 // enables LED toggling in toggleD7LED()
@@ -16,6 +16,7 @@
 #include <TPPCircularBuff.h>
 #include <TPPInterruptService.h>
 #include <TPPUtils.h>
+
 
 /***************************************************************************************************/
 // saratogaSIS: SIS firmware - this is the software that is upoaded to the SIS Hub and performs
@@ -53,14 +54,12 @@ const unsigned long MULTI_TIME = 2ul;   	// 2 second interval to detect multiple
 const unsigned long AWAY = 600ul;       	// 10 * 60 = 600; ten minutes for declaring away
 const unsigned long COMATOSE = 3600ul;  	// 60*60 = 3600; 1 hour for for declaring no movement
 
-//XXX new
 typedef enum  enum_messageIndex_type  {                    // used to select the correct message from the string array messages[]
     emsgNoOneIsHome = 0,
     emsgPersonIsHome,
     emsgNoMovement,
     emsgMultiplePersons
 }  ;
-//XXX end new
 const String mc_messages[] = {             	// additional log messages for this application. Use enum_messageIndex to access these.
                         	"No one is home",
                         	"Person is home",

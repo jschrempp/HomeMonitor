@@ -15,7 +15,7 @@
 #include "application.h"
 
 // parse string into an array of strings based on comma delimiter
-// NOTE: result returned via global array
+// Note: result returned via global array
 int parser(String source);
 
 // blink the D7 LED without blocking

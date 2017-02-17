@@ -18,7 +18,7 @@
 #include "application.h"
 
 // array to hold parsed substrings from a command string
-// NOTE: used by parser in SISUtilities.
+// Note: used by parser in SISUtilities.
 // XXX we should eventually eliminate this. See note in Parser routine header.
 const int MAX_SUBSTRINGS = 6;   // the largest number of comma delimited substrings in a command string
 extern String g_dest[];

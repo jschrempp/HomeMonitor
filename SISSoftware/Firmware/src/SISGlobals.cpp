@@ -13,7 +13,7 @@
 #include <SISGlobals.h>
 
 // array to hold parsed substrings from a command string
-// NOTE: used by parser in SISUtilities.
+// Note: used by parser in SISUtilities.
 // XXX we should eventually eliminate this. See note in Parser routine header.
 String g_dest[MAX_SUBSTRINGS];
 
